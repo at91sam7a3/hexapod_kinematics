@@ -17,7 +17,7 @@ namespace hexapod
     static const double stepHeight = bodyConfiguration::stepHeight; // 80;//How far robot raise a leg on step
 
     Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
-        : bodyHeight_(60), leg_position(on_ground), currentLegrotationOffset_(0), xPos_(0), yPos_(0), xCenterPos_(0), yCenterPos_(0), distanceFromGround_(0)
+        : m_bodyHeight(60), leg_position(on_ground), currentLegrotationOffset_(0), xPos_(0), yPos_(0), xCenterPos_(0), yCenterPos_(0), distanceFromGround_(0)
     {
         m_legIndex = idx;
         indexes_.push_back(idx * 3);
@@ -58,9 +58,9 @@ namespace hexapod
         // angle Gamma (angleC_)
         angleC_ = (atan(xPos_ / yPos_));
         double L1 = sqrt(xPos_ * xPos_ + yPos_ * yPos_);
-        double L = sqrt(pow(bodyHeight_, 2.0) + pow((L1 - cLegPart), 2));
+        double L = sqrt(pow(m_bodyHeight, 2.0) + pow((L1 - cLegPart), 2));
         // angle alpfa
-        angleA_ = acos((bodyHeight_ - distanceFromGround_) / L) + acos(((pow(aLegPart, 2) - pow(bLegPart, 2) - pow(L, 2))) / (-2 * bLegPart * L));
+        angleA_ = acos((m_bodyHeight - distanceFromGround_) / L) + acos(((pow(aLegPart, 2) - pow(bLegPart, 2) - pow(L, 2))) / (-2 * bLegPart * L));
         // angle beta
         angleB_ = acos((pow(L, 2) - pow(aLegPart, 2) - pow(bLegPart, 2)) / (-2 * aLegPart * bLegPart));
 

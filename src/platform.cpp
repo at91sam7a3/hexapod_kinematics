@@ -12,7 +12,7 @@ namespace hexapod
     const double PI = 3.141592654;
 
     // place legs in compact position for transportation
-    void Platform::ParkLegs()
+    void Platform::parkLegs()
     {
         for (unsigned int i = 0; i < 6; ++i)
         {
@@ -30,7 +30,7 @@ namespace hexapod
 
     Platform::Platform(std::function<void(int)> sleepMsFuction,
                        std::function<void(int, double)> servoPositionFunction)
-        : m_rotationSpeed(0.0f), m_movementSpeed(0.0f, 0.0f), m_sleepMsFunction(sleepMsFuction)
+        : m_rotationSpeed(0.0f), m_movementSpeed(0.0f, 0.0f), m_sleepMsFunction(sleepMsFuction), m_active(false)
     {
         for (int i = 0; i < 6; ++i)
         {
@@ -39,19 +39,32 @@ namespace hexapod
         }
     }
 
-    void Platform::SetBodyHeight(const float height)
+    void Platform::setBodyHeight(const float height)
     {
         for (size_t i = 0; i < 6; ++i)
         {
-            m_legs[i].bodyHeight_ = height;
+            m_legs[i].m_bodyHeight = height;
             m_legs[i].RecalcAngles();
         }
-        bodyHeight_ = height;
+        m_bodyHeight = height;
     }
 
-    float Platform::GetBodyHeight() const
+    float Platform::getBodyHeight() const
     {
-        return bodyHeight_;
+        return m_bodyHeight;
+    }
+
+    void Platform::startMovementThread()
+    {
+        if(m_active) return;
+        m_active = true;
+        std::thread movement(&Platform::movementThread);
+        movement.detach();
+    }
+
+    void Platform::stopMovementThread()
+    {
+        m_active = false;
     }
 
     void Platform::movingEnd()
@@ -127,17 +140,17 @@ namespace hexapod
                 m_legs[i].MoveLegUp();
                 m_legs[i].MoveLegToCenter();
                 m_legs[i].RecalcAngles();
-                MovementDelay();
+                movementDelay();
             }
             m_legs[i].MoveLegDown();
             m_legs[i].RecalcAngles();
-            MovementDelay();
-            MovementDelay();
+            movementDelay();
+            movementDelay();
         }
     }
 
-    void Platform::MovementThread()
-    {
+    void Platform::movementThread()
+    {        
         prepareToGo();
         while (1)
         {
@@ -145,7 +158,7 @@ namespace hexapod
         }
     }
 
-    void Platform::MovementDelay()
+    void Platform::movementDelay()
     {
         m_sleepMsFunction(100);
     }

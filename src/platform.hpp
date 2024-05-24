@@ -7,7 +7,6 @@
 #include <functional>
 
 // This class manage all movements of robot
-// It contain it`s own thread, and really autonomous
 namespace hexapod
 {
     class Platform
@@ -15,26 +14,29 @@ namespace hexapod
     public:
         Platform(std::function<void(int)> sleepFuction,
                  std::function<void(int, double)> servoPositionFunction);
-        void ParkLegs();
+        /*Move legs into transportable position*/
+        void parkLegs();        
         void setVelocity(const vec2f movementSpeed, const double rotationSpeed);
-        void SetBodyHeight(const float height);
-        float GetBodyHeight() const;
-        void MovementThread();
+        void setBodyHeight(const float height);
+        float getBodyHeight() const;
+        void startMovementThread();
+        void stopMovementThread();
 
     private:
+        void movementThread();
         void prepareToGo();
         void movingEnd();
         void procedureGo();
-        void MovementDelay();
+        void movementDelay();
         int getLegToRaise();
 
     private:
-        std::unique_ptr<std::thread> moving_thread_;
         std::vector<Leg> m_legs;
-        double bodyHeight_;
+        double m_bodyHeight;
         double m_rotationSpeed;
         vec2f m_movementSpeed;
         std::function<void(int)> m_sleepMsFunction;
+        volatile bool m_active;
     };
 } //namespace hexaod
 

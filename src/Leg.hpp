@@ -59,7 +59,7 @@ namespace hexapod
             moving_to_target,
             moving_down
         } leg_position;
-        double bodyHeight_;
+        double m_bodyHeight;
     private:
         LegCoodinates GetLegCoord();
         std::vector<int> GetMotorIndexes();
