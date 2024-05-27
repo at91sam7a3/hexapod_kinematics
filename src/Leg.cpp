@@ -17,7 +17,7 @@ namespace hexapod
     static const double stepHeight = bodyConfiguration::stepHeight; // 80;//How far robot raise a leg on step
 
     Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
-        : m_bodyHeight(60), leg_position(on_ground), currentLegrotationOffset_(0), xPos_(0), yPos_(0), xCenterPos_(0), yCenterPos_(0), distanceFromGround_(0)
+        : m_servoFunction(servoFunction), m_bodyHeight(60), leg_position(on_ground), currentLegrotationOffset_(0), xPos_(0), yPos_(0), xCenterPos_(0), yCenterPos_(0), distanceFromGround_(0)
     {
         m_legIndex = idx;
         indexes_.push_back(idx * 3);

@@ -58,7 +58,7 @@ namespace hexapod
     {
         if(m_active) return;
         m_active = true;
-        std::thread movement(&Platform::movementThread);
+        std::thread movement(&Platform::movementThread,this);
         movement.detach();
     }
 
