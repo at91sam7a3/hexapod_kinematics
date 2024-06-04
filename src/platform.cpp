@@ -6,7 +6,21 @@
 
 namespace hexapod
 {
+/*
+This is schematic of a robot motors positions
 
+                    FRONT(camera from this side)
+ (leg6)     16-15-17    2-0-1 (leg1)
+(leg5)   13-12-14         5-3-2 (leg2)
+   (leg4)    10-9-11    8-6-7 (leg3)
+
+ Motors position for 1st leg
+          1
+        /  \
+    2-0     \
+*/
+
+   
     static const double minimumDistanceStep = 30; // TODO requires experiments
 
     const double PI = 3.141592654;

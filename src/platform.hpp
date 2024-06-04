@@ -21,10 +21,9 @@ namespace hexapod
         float getBodyHeight() const;
         void startMovementThread();
         void stopMovementThread();
-
+        void prepareToGo();
     private:
         void movementThread();
-        void prepareToGo();
         void movingEnd();
         void procedureGo();
         void movementDelay();

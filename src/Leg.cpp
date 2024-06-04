@@ -3,6 +3,8 @@
 #include <iostream>
 #include "vec2f.hpp"
 
+#define DEBUG_LOG
+
 namespace hexapod
 {
 
@@ -17,42 +19,53 @@ namespace hexapod
     static const double stepHeight = bodyConfiguration::stepHeight; // 80;//How far robot raise a leg on step
 
     Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
-        : m_servoFunction(servoFunction), m_bodyHeight(60), leg_position(on_ground), currentLegrotationOffset_(0), xPos_(0), yPos_(0), xCenterPos_(0), yCenterPos_(0), distanceFromGround_(0)
+        : m_servoFunction(servoFunction), 
+          m_bodyHeight(60),
+          leg_position(on_ground),
+          currentLegrotationOffset_(0),
+          xPos_(0),
+          yPos_(0),
+          xCenterPos_(0),
+          yCenterPos_(0),
+          distanceFromGround_(0),
+          m_legIndex(idx)          
     {
-        m_legIndex = idx;
+        //here the motor numbers for this leg
         indexes_.push_back(idx * 3);
         indexes_.push_back(idx * 3 + 1);
         indexes_.push_back(idx * 3 + 2);
+        // it means leg look left of right when in math it`s degree is 0 but in real it`s servo 90
+        angleCOffsetAccordingToLegAttachment_ = -90;
 
-        angleCOffsetAccordingToLegAttachment_ = 0;
+        yCenterPos_ = 100;
 
-        if (idx == 0)
-            angleCOffsetAccordingToLegAttachment_ = -90;
-        if (idx == 1)
-            angleCOffsetAccordingToLegAttachment_ = -90;
-        if (idx == 2)
-            angleCOffsetAccordingToLegAttachment_ = -90;
-        if (idx == 3)
-            angleCOffsetAccordingToLegAttachment_ = -90;
-        if (idx == 4)
-            angleCOffsetAccordingToLegAttachment_ = -90;
-        if (idx == 5)
-            angleCOffsetAccordingToLegAttachment_ = -90;
-
-        if ((idx == 1) || (idx == 4))
+        if ((idx == RightMiddle) || (idx == LeftMiddle))
             yCenterPos_ = 160;
 
-        if ((idx == 0) || (idx == 5))
-            xCenterPos_ = 60;
-        yCenterPos_ = 100;
+        if ((idx == RightFront) || (idx == LeftFront))
+            xCenterPos_ = 100;
+        
+        if ((idx == RightBack) || (idx == LeftBack))
+            xCenterPos_ = -100;
+        
 
-        if ((idx == 2) || (idx == 3))
-            xCenterPos_ = -60;
-        yCenterPos_ = 100;
+#ifdef DEBUG_LOG
+        if(m_legIndex == 0)
+        {
+            std::cout << "FOR LEG #1 central x = " << xCenterPos_ << " and y = " << yCenterPos_ << std::endl;
+        }
+#endif
     }
 
     void Leg::RecalcAngles()
     {
+        #ifdef DEBUG_LOG
+        if(m_legIndex == 0)
+        {
+            std::cout << "FOR LEG #1  x = " << xPos_ << " and y = " << yPos_ << std::endl;
+        }
+
+        #endif
         if (yPos_ == 0.0)
             yPos_ = 0.01;
         // angle Gamma (angleC_)
