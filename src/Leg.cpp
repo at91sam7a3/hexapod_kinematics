@@ -7,20 +7,9 @@
 
 namespace hexapod
 {
-
-    // leg parts sizes
-    static const double cLegPart = bodyConfiguration::cLegPart;
-    static const double bLegPart = bodyConfiguration::bLegPart;
-    static const double aLegPart = bodyConfiguration::aLegPart;
-    // phisical coordinates where legs attached on body
-    static const double centerYOffset = bodyConfiguration::centerYOffset; // 65
-    static const double rearYOffset = bodyConfiguration::rearYOffset;
-    static const double rearXOffset = bodyConfiguration::rearXOffset;
-    static const double stepHeight = bodyConfiguration::stepHeight; // 80;//How far robot raise a leg on step
-
     Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
-        : m_servoFunction(servoFunction), 
-          m_bodyHeight(60),
+        : m_servoFunction(servoFunction),
+          m_bodyHeight(50),
           leg_position(on_ground),
           currentLegrotationOffset_(0),
           xPos_(0),
@@ -28,7 +17,9 @@ namespace hexapod
           xCenterPos_(0),
           yCenterPos_(0),
           distanceFromGround_(0),
-          m_legIndex(idx)          
+          m_legIndex(idx),
+          movementConfiguration_(bodyConfiguration::HexapodMovementConfiguration::getDefaultSettings()),
+          frame_(bodyConfiguration::HexapodFrame::getConfiguredFrame()) 
     {
         //here the motor numbers for this leg
         indexes_.push_back(idx * 3);
@@ -37,24 +28,31 @@ namespace hexapod
         // it means leg look left of right when in math it`s degree is 0 but in real it`s servo 90
         angleCOffsetAccordingToLegAttachment_ = -90;
 
-        yCenterPos_ = 100;
 
+        //X - front, Y - left(or right)
+
+
+        // middle legs
         if ((idx == RightMiddle) || (idx == LeftMiddle))
-            yCenterPos_ = 160;
+        {
+            xCenterPos_ = 0;
+            yCenterPos_ = 100;
+        }
 
         if ((idx == RightFront) || (idx == LeftFront))
-            xCenterPos_ = 100;
+        {
+            xCenterPos_ = 70;
+            yCenterPos_ = 70;
+        }
         
         if ((idx == RightBack) || (idx == LeftBack))
-            xCenterPos_ = -100;
-        
-
-#ifdef DEBUG_LOG
-        if(m_legIndex == 0)
         {
-            std::cout << "FOR LEG #1 central x = " << xCenterPos_ << " and y = " << yCenterPos_ << std::endl;
+            xCenterPos_ = -70;//-72-50;
+            yCenterPos_ = 70;
         }
-#endif
+
+        xPos_ = xCenterPos_;
+        yPos_ = yCenterPos_;
     }
 
     void Leg::RecalcAngles()
@@ -68,22 +66,21 @@ namespace hexapod
         #endif
         if (yPos_ == 0.0)
             yPos_ = 0.01;
-        // angle Gamma (angleC_)
-        angleC_ = (atan(xPos_ / yPos_));
-        double L1 = sqrt(xPos_ * xPos_ + yPos_ * yPos_);
-        double L = sqrt(pow(m_bodyHeight, 2.0) + pow((L1 - cLegPart), 2));
+        angleC_ = (atan(xPos_ / yPos_));  //this is angle between body and leg. Servo #2
+        double L1 = sqrt(xPos_ * xPos_ + yPos_ * yPos_); //L1 distance from leg attachment to point on ground in 2d
+        double L = sqrt(pow(m_bodyHeight, 2.0) + pow((L1 - frame_.cLegPart), 2));
         // angle alpfa
-        angleA_ = acos((m_bodyHeight - distanceFromGround_) / L) + acos(((pow(aLegPart, 2) - pow(bLegPart, 2) - pow(L, 2))) / (-2 * bLegPart * L));
+        angleA_ = acos((m_bodyHeight - distanceFromGround_) / L) + acos(((pow(frame_.aLegPart, 2) - pow(frame_.bLegPart, 2) - pow(L, 2))) / (-2 * frame_.bLegPart * L));
         // angle beta
-        angleB_ = acos((pow(L, 2) - pow(aLegPart, 2) - pow(bLegPart, 2)) / (-2 * aLegPart * bLegPart));
+        angleB_ = acos((pow(L, 2) - pow(frame_.aLegPart, 2) - pow(frame_.bLegPart, 2)) / (-2 * frame_.aLegPart * frame_.bLegPart));
 
         // set angles directly to servos
         angleA_ = angleA_ * 180 / 3.1415;
         angleB_ = angleB_ * 180 / 3.1415;
         angleC_ = angleC_ * 180 / 3.1415;
-        m_servoFunction(indexes_[0], angleA_);
-        m_servoFunction(indexes_[1], 180 - angleB_);
-        m_servoFunction(indexes_[2], angleC_ - angleCOffsetAccordingToLegAttachment_);
+        SetMotorAngle(0, angleA_);
+        SetMotorAngle(1, angleB_);
+        SetMotorAngle(2, angleC_);
     }
 
     void Leg::SetLocalXY(double x, double y) // TODO
@@ -122,46 +119,7 @@ namespace hexapod
         return indexes_;
     }
 
-    // X axis looks front
-    // Y axit looks left
-    vec2f Leg::GlobalToLocal(vec2f &lc)
-    {
-        vec2f res;
-        switch (m_legIndex)
-        {
 
-        case RightMiddle:
-            res.x = lc.x;
-            res.y = lc.y - centerYOffset;
-            break;
-        case LeftMiddle:
-            res.x = lc.x;
-            res.y = -lc.y - centerYOffset;
-            break;
-
-        case RightFront:
-            res.x = lc.x - rearXOffset;
-            res.y = lc.y - rearYOffset;
-            break;
-        case RightBack:
-            res.x = lc.x + rearXOffset;
-            res.y = lc.y - rearYOffset;
-            break;
-
-        case LeftFront:
-            res.x = lc.x - rearXOffset;
-            res.y = -lc.y - rearYOffset;
-            break;
-        case LeftBack:
-            res.x = lc.x + rearXOffset;
-            res.y = -lc.y - rearYOffset;
-            break;
-
-        default:
-            break;
-        }
-        return res;
-    };
 
     double Leg::GetLegDirectionInGlobalCoordinates()
     {
@@ -171,14 +129,14 @@ namespace hexapod
         case RightMiddle:
             return -90;
 
-        case LeftMiddle:
-            return 90;
-
         case RightFront:
             return -90;
 
         case RightBack:
             return -90;
+
+        case LeftMiddle:
+            return 90;
 
         case LeftFront:
             return 90;
@@ -224,7 +182,7 @@ namespace hexapod
 
     void Leg::MoveLegUp()
     {
-        distanceFromGround_ = stepHeight;
+        distanceFromGround_ = movementConfiguration_.stepHeight;
         leg_position = moving_up;
     }
 
@@ -245,7 +203,7 @@ namespace hexapod
         if (leg_position != on_ground)
             throw(std::runtime_error("try to move up leg that already in air"));
         newPositionOnGround_ = newPositionOnGround;
-        distanceFromGround_ = stepHeight;
+        distanceFromGround_ = movementConfiguration_.stepHeight;
         leg_position = moving_up;
     }
 
@@ -278,6 +236,7 @@ namespace hexapod
     {
         return angleC_;
     }
+    // Next 3 methods are needed for rotation
 
     void Leg::TurnLegWithGlobalCoord(double offset)
     {
@@ -296,29 +255,29 @@ namespace hexapod
 
         case RightMiddle:
             res.x = xPos_;
-            res.y = yPos_ + centerYOffset;
+            res.y = yPos_ + frame_.centerYOffset;
             break;
         case LeftMiddle:
             res.x = xPos_;
-            res.y = -yPos_ - centerYOffset;
+            res.y = -yPos_ - frame_.centerYOffset;
             break;
 
         case RightFront:
-            res.x = xPos_ + rearXOffset;
-            res.y = yPos_ + rearYOffset;
+            res.x = xPos_ + frame_.rearXOffset;
+            res.y = yPos_ + frame_.rearYOffset;
             break;
         case RightBack:
-            res.x = xPos_ - rearXOffset;
-            res.y = yPos_ + rearYOffset;
+            res.x = xPos_ - frame_.rearXOffset;
+            res.y = yPos_ + frame_.rearYOffset;
             break;
 
         case LeftFront:
-            res.x = xPos_ + rearXOffset;
-            res.y = -yPos_ - rearYOffset;
+            res.x = xPos_ + frame_.rearXOffset;
+            res.y = -yPos_ - frame_.rearYOffset;
             break;
         case LeftBack:
-            res.x = xPos_ - rearXOffset;
-            res.y = -yPos_ - rearYOffset;
+            res.x = xPos_ - frame_.rearXOffset;
+            res.y = -yPos_ - frame_.rearYOffset;
             break;
 
         default:
@@ -327,4 +286,44 @@ namespace hexapod
         return res;
     }
 
+    // X axis looks front
+    // Y axit looks left
+    vec2f Leg::GlobalToLocal(vec2f &lc)
+    {
+        vec2f res;
+        switch (m_legIndex)
+        {
+
+        case RightMiddle:
+            res.x = lc.x;
+            res.y = lc.y - frame_.centerYOffset;
+            break;
+        case LeftMiddle:
+            res.x = lc.x;
+            res.y = -lc.y - frame_.centerYOffset;
+            break;
+
+        case RightFront:
+            res.x = lc.x - frame_.rearXOffset;
+            res.y = lc.y - frame_.rearYOffset;
+            break;
+        case RightBack:
+            res.x = lc.x + frame_.rearXOffset;
+            res.y = lc.y - frame_.rearYOffset;
+            break;
+
+        case LeftFront:
+            res.x = lc.x - frame_.rearXOffset;
+            res.y = -lc.y - frame_.rearYOffset;
+            break;
+        case LeftBack:
+            res.x = lc.x + frame_.rearXOffset;
+            res.y = -lc.y - frame_.rearYOffset;
+            break;
+
+        default:
+            break;
+        }
+        return res;
+    };
 }

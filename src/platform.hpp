@@ -22,14 +22,17 @@ namespace hexapod
         void startMovementThread();
         void stopMovementThread();
         void prepareToGo();
+        void setLegCenter(int idx, float x, float y);
+        std::pair<float,float> getLegCenter(int idx);
+        void procedureGo();
     private:
         void movementThread();
         void movingEnd();
-        void procedureGo();
         void movementDelay();
         int getLegToRaise();
 
     private:
+
         std::vector<Leg> m_legs;
         double m_bodyHeight;
         double m_rotationSpeed;

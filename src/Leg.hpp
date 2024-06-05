@@ -4,6 +4,8 @@
 #include <iostream>
 #include <functional>
 #include "vec2f.hpp"
+#include "bodyConfiguration.hpp"
+
 
 namespace hexapod
 {
@@ -60,8 +62,9 @@ namespace hexapod
             moving_down
         } leg_position;
         double m_bodyHeight;
-    private:
         LegCoodinates GetLegCoord();
+    private:
+
         std::vector<int> GetMotorIndexes();
         // convert global coordinates to local for this leg
         vec2f GlobalToLocal(vec2f &lc);
@@ -88,5 +91,7 @@ namespace hexapod
         std::vector<int> indexes_;
         int m_legIndex;
         float angleCOffsetAccordingToLegAttachment_;
+        bodyConfiguration::HexapodMovementConfiguration movementConfiguration_;
+        bodyConfiguration::HexapodFrame frame_;
     };
 }

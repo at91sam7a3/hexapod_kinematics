@@ -34,6 +34,7 @@ This is schematic of a robot motors positions
             m_legs[i].SetMotorAngle(1, 0);
             m_legs[i].SetMotorAngle(2, 0);
         }
+
     }
 
     void Platform::setVelocity(const vec2f movementSpeed, const double rotationSpeed)
@@ -105,7 +106,7 @@ This is schematic of a robot motors positions
                 legToRaise = currentLeg.GetLegIndex();
             }
         }
-        if (maxDist > minimumDistanceStep)
+        if (maxDist < minimumDistanceStep)
         {
             legToRaise = -1;
         }
@@ -152,7 +153,9 @@ This is schematic of a robot motors positions
             if (!m_legs[i].IsInCenter())
             {
                 m_legs[i].MoveLegUp();
+                movementDelay();
                 m_legs[i].MoveLegToCenter();
+                movementDelay();
                 m_legs[i].RecalcAngles();
                 movementDelay();
             }
@@ -161,6 +164,18 @@ This is schematic of a robot motors positions
             movementDelay();
             movementDelay();
         }
+    }
+
+    void Platform::setLegCenter(int idx, float x, float y)
+    {
+        m_legs[idx].SetLocalXY(x,y);
+        m_legs[idx].RecalcAngles();
+    }
+
+    std::pair<float, float> Platform::getLegCenter(int idx)
+    {
+        LegCoodinates coord =  m_legs[idx].GetLegCoord();
+        return {coord.x, coord.y};
     }
 
     void Platform::movementThread()
