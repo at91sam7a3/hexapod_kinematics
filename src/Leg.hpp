@@ -1,7 +1,5 @@
 #pragma once
-#include <math.h>
 #include <vector>
-#include <iostream>
 #include <functional>
 #include "vec2f.hpp"
 #include "bodyConfiguration.hpp"
@@ -39,14 +37,41 @@ namespace hexapod
     {
     public:
         Leg(std::function<void(int, double)> servoFunction, int legIndex);
+        /*!
+         * \brief RecalcAngles update new servo angles depending on a end of a leg position.
+         *        Needed to be called after and leg coordinates changes
+         */
         void RecalcAngles();
+        /*!
+         * \brief SetLocalXY this method control leg end position
+         */
         void SetLocalXY(double, double);
+        /*!
+         * \brief LegAddOffsetInGlobal - with this method we move end of our leg in needed direction
+         */
         void LegAddOffsetInGlobal(double, double);
+        /*!
+         * \brief SetLegCoord
+         * \param lc - setter for leg coordinates
+         */
         void SetLegCoord(LegCoodinates &lc);
+        /*!
+         * \brief IsInCenter - this method checks - is leg coordinates already in the senter zone
+         * \return
+         */
         bool IsInCenter();
+        /*!
+         * \brief MoveLegUp - Raise the leg
+         */
         void MoveLegUp();
+        /*!
+         * \brief MoveLegDown - move leg to the ground level - 0 height
+         */
         void MoveLegDown();
-        void MoveLegToCenter();
+        /*!
+         * \brief MoveLegToCenter - move leg position to the center
+         */
+        void MoveLegToCenter();        
         void MoveLegUp(vec2f newPositionOnGround);
         void SetMotorAngle(int idx, double angle);
         void ProcessLegMovingInAir();
@@ -64,8 +89,6 @@ namespace hexapod
         double m_bodyHeight;
         LegCoodinates GetLegCoord();
     private:
-
-        std::vector<int> GetMotorIndexes();
         // convert global coordinates to local for this leg
         vec2f GlobalToLocal(vec2f &lc);
         // get Leg angle

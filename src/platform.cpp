@@ -1,3 +1,5 @@
+#pragma once
+
 #include "platform.hpp"
 #include <iostream>
 #include <chrono>
@@ -19,11 +21,11 @@ This is schematic of a robot motors positions
         /  \
     2-0     \
 */
-
-   
-    static const double minimumDistanceStep = 30; // TODO requires experiments
-
+namespace
+{
     const double PI = 3.141592654;
+    const double minimumDistanceStep = 30; // TODO requires experiments
+}
 
     // place legs in compact position for transportation
     void Platform::parkLegs()
@@ -92,7 +94,10 @@ This is schematic of a robot motors positions
             }
         }
     }
-
+    /*!
+     * \brief Platform::getLegToRaise - find most suitable leg to raise (most far from center)
+     * \return leg index or -1
+     */
     int Platform::getLegToRaise()
     {
         int legToRaise = -1;
@@ -118,12 +123,12 @@ This is schematic of a robot motors positions
         bool anyLegInAir = false;
         for (Leg &currentLeg : m_legs)
         {
-            if (currentLeg.leg_position != Leg::on_ground)
+            if (currentLeg.leg_position != Leg::on_ground) //for leg in air - move it to center
             {
                 anyLegInAir = true;
                 currentLeg.ProcessLegMovingInAir();
             }
-            else // leg on a ground
+            else // leg on a ground - move it as needed
             {
                 currentLeg.LegAddOffsetInGlobal(m_movementSpeed.x, m_movementSpeed.y);
                 currentLeg.TurnLegWithGlobalCoord( m_rotationSpeed );
@@ -166,10 +171,12 @@ This is schematic of a robot motors positions
         }
     }
 
-    void Platform::setLegCenter(int idx, float x, float y)
+    void Platform::setLegCenter(int idx, float x, float y, float height =0)
     {
         m_legs[idx].SetLocalXY(x,y);
+        if(height>0) m_legs[idx].MoveLegUp();
         m_legs[idx].RecalcAngles();
+
     }
 
     std::pair<float, float> Platform::getLegCenter(int idx)
@@ -181,7 +188,7 @@ This is schematic of a robot motors positions
     void Platform::movementThread()
     {        
         prepareToGo();
-        while (1)
+        while (m_active)
         {
             procedureGo();
         }
