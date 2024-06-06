@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Leg.hpp"
+#include <atomic>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -22,7 +23,7 @@ namespace hexapod
         void startMovementThread();
         void stopMovementThread();
         void prepareToGo();
-        void setLegCenter(int idx, float x, float y);
+        void setLegCenter(int idx, float x, float y, float height);
         std::pair<float,float> getLegCenter(int idx);
         void procedureGo();
     private:
@@ -38,7 +39,8 @@ namespace hexapod
         double m_rotationSpeed;
         vec2f m_movementSpeed;
         std::function<void(int)> m_sleepMsFunction;
-        volatile bool m_active;
+        std::atomic_bool m_active;
+
     };
 } //namespace hexaod
 
