@@ -191,6 +191,7 @@ namespace
         while (m_active)
         {
             procedureGo();
+            movementDelay();
         }
     }
 
