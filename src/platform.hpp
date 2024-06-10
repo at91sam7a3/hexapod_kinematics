@@ -13,11 +13,19 @@ namespace hexapod
     class Platform
     {
     public:
+        enum StepStyle
+        {
+            OneLeg,
+            TwoLegs,
+            ThreeLegs
+        };
+
         Platform(std::function<void(int)> sleepFuction,
                  std::function<void(int, double)> servoPositionFunction);
         /*Move legs into transportable position*/
         void parkLegs();        
         void setVelocity(const vec2f movementSpeed, const double rotationSpeed);
+        void setWalkingStyle(StepStyle style);
         void setBodyHeight(const float height);
         float getBodyHeight() const;
         void startMovementThread();
@@ -31,16 +39,17 @@ namespace hexapod
         void movingEnd();
         void movementDelay();
         int getLegToRaise();
-
+        void raiseOneLeg(int legToRaise);
+        void raiseTwoLegs(int legToRaise);
+        void raiseThreeLegs(int legToRaise);
     private:
-
         std::vector<Leg> m_legs;
         double m_bodyHeight;
         double m_rotationSpeed;
         vec2f m_movementSpeed;
         std::function<void(int)> m_sleepMsFunction;
         std::atomic_bool m_active;
-
+        StepStyle m_stepStyle;
     };
 } //namespace hexaod
 
