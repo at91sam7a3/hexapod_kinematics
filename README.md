@@ -43,4 +43,4 @@ int main(int argc, char *argv[])
 
 ```
 
-[![Robot while rotating]](./doc/motor-orders.png)(https://youtu.be/D592nCSn1s0)
+[![Robot while rotating]](./doc/motor-orders.png)(https://www.youtube.com/watch?v=D592nCSn1s0)
