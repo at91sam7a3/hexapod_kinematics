@@ -43,4 +43,4 @@ int main(int argc, char *argv[])
 
 ```
 
-[![Video Title]((https://youtu.be/D592nCSn1s0)
+[![Robot while rotating](https://youtu.be/D592nCSn1s0)
