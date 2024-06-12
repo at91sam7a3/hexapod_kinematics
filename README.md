@@ -41,6 +41,6 @@ int main(int argc, char *argv[])
     ...wait here...
 }
 
-[![Watch the video]](https://youtu.be/D592nCSn1s0)
-
 ```
+
+[![Video Title]((https://youtu.be/D592nCSn1s0)
