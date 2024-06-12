@@ -40,4 +40,7 @@ int main(int argc, char *argv[])
     platform.startMovementThread(); 
     ...wait here...
 }
+
+[![Watch the video]](https://youtu.be/D592nCSn1s0)
+
 ```
