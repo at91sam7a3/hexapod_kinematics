@@ -42,5 +42,6 @@ int main(int argc, char *argv[])
 }
 
 ```
+Click to see video of robot movement
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/D592nCSn1s0/0.jpg)](https://www.youtube.com/watch?v=D592nCSn1s0)
