@@ -51,12 +51,14 @@ void Platform::setWalkingStyle(StepStyle style)
 }
 
 Platform::Platform(std::function<void(int)> sleepMsFuction,
-                   std::function<void(int, double)> servoPositionFunction)
+                   std::function<void(int, double)> servoPositionFunction,
+                   int kinematic_period)
     : m_rotationSpeed(0.0f)
     , m_movementSpeed(0.0f, 0.0f)
     , m_sleepMsFunction(sleepMsFuction)
     , m_active(false)
     , m_stepStyle(OneLeg)
+    , m_kinematicPeriod(kinematic_period)
 {
     for (int i = 0; i < 6; ++i)
     {
@@ -247,6 +249,6 @@ void Platform::movementThread()
 
 void Platform::movementDelay()
 {
-    m_sleepMsFunction(100);
+    m_sleepMsFunction(m_kinematicPeriod);
 }
 }
