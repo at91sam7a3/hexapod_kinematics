@@ -12,11 +12,12 @@
 Here is a simplest code to make robot move forward:
 ```
 #include "../../hexapod_kinematics/src/platform.hpp"
+#include <chrono>
 
 void setServo(int id, double angle)
 {
-    if(id>8) angle = 180 - angle;
-    yourFunctionToCOntrolServoAngle(idx,angle);
+    if(id>8) angle = 180 - angle; //This line is important as right motors moves mirrored to left
+    yourFunctionToControlServoAngle(id,angle); //id is a servo number [0..17], angle is a servo position [0 to 180]
 }
 
 void sleepMs(int sleepTime)
@@ -28,8 +29,8 @@ void sleepMs(int sleepTime)
 int main(int argc, char *argv[])
 {
     hexapod::Platform platform(&sleepMs, &setServo);
-    platform.setVelocity({1, 0}, 0); //front,size,rotation, {0,0},1 means rotate on place
-    platform.startMovementThread();
+    platform.setVelocity({1, 0}, 0); //front,side,rotation, {0,0},1 means rotate on place
+    platform.startMovementThread(); 
     ...wait here...
 }
 ```
