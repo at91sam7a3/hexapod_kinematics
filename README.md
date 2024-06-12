@@ -3,11 +3,18 @@
 
  Here the pictures provides schematic body sizes and servo numbers
 
-![plot](./doc/body.png)
 
 ![plot](./doc/motor-orders.png)
+Attention to angles for current legs position on a photo
+Right motor angles are mirrored in comparation with left
 
- You need to create instance of Platorm clss and pass there 2 functors - one for setting angle to joint and one for syystm specific sleep in ms.
+![plot](./doc/body.png)
+
+
+
+ You need to create instance of Platorm class and pass there 2 functors
+ -one for setting angle to joint 
+ -and one for system specific sleep in ms.
 
 Here is a simplest code to make robot move forward:
 ```C++
