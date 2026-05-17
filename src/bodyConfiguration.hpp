@@ -17,9 +17,9 @@ namespace bodyConfiguration
             frame.cLegPart = 53;
             frame.bLegPart = 81;
             frame.aLegPart = 120;
-            frame.centerYOffset = 85;
-            frame.rearYOffset = 72;
-            frame.rearXOffset = 72;
+            frame.centerYOffset = 108;
+            frame.rearYOffset = 76;
+            frame.rearXOffset = 76;
             return frame;
         }
   };
