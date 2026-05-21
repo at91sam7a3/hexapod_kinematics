@@ -22,6 +22,7 @@ namespace hexapod
 
         Platform(std::function<void(int)> sleepFuction,
                  std::function<void(int, double)> servoPositionFunction,
+                 std::function<void()> readSensorsFunction,
                  int kinematic_period=100);
         /*Move legs into transportable position*/
         void parkLegs();        
@@ -49,6 +50,8 @@ namespace hexapod
         double m_rotationSpeed;
         vec2f m_movementSpeed;
         std::function<void(int)> m_sleepMsFunction;
+        std::function<void(int, double)> m_servoPositionFunction;
+        std::function<void()> m_readSensorsFunction;
         std::atomic_bool m_active;
         StepStyle m_stepStyle;
         int m_kinematicPeriod;
