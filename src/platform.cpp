@@ -39,10 +39,10 @@ void Platform::parkLegs()
 
 }
 
-void Platform::setVelocity(const vec2f movementSpeed, const double rotationSpeed)
+void Platform::setVelocity(const vec2f movementSpeed, const double rotationSpeed_deg)
 {
-    m_movementSpeed = movementSpeed;
-    m_rotationSpeed = rotationSpeed;
+    m_targetMovementSpeed = movementSpeed;
+    m_targetRotationSpeed_deg = rotationSpeed_deg;
 }
 
 void Platform::setWalkingStyle(StepStyle style)
@@ -50,17 +50,26 @@ void Platform::setWalkingStyle(StepStyle style)
     m_stepStyle = style;
 }
 
+void Platform::setGaitParameters(const bodyConfiguration::GaitParameters& params)
+{
+    m_gaitParams = params;
+}
+
 Platform::Platform(std::function<void(int)> sleepMsFuction,
                    std::function<void(int, double)> servoPositionFunction,
                    std::function<void()> readSensorsFunction,
                    int kinematic_period)
-    : m_rotationSpeed(0.0f)
-    , m_movementSpeed(0.0f, 0.0f)
+    : m_targetRotationSpeed_deg(0.0)
+    , m_targetMovementSpeed(0.0, 0.0)
+    , m_currentRotationSpeed_deg(0.0)
+    , m_currentMovementSpeed(0.0, 0.0)
+    , m_gaitPhase_(0.0)
+    , m_gaitParams(bodyConfiguration::GaitParameters::getDefault())
     , m_sleepMsFunction(sleepMsFuction)
     , m_servoPositionFunction(servoPositionFunction)
     , m_readSensorsFunction(readSensorsFunction)
     , m_active(false)
-    , m_stepStyle(OneLeg)
+    , m_stepStyle(ThreeLegs)
     , m_kinematicPeriod(kinematic_period)
 {
     for (int i = 0; i < 6; ++i)
@@ -98,111 +107,88 @@ void Platform::stopMovementThread()
     m_active = false;
 }
 
-void Platform::movingEnd()
+// Tripod A: indices 0,2,4 (RF, RB, LM) — swings in first half of cycle
+// Tripod B: indices 1,3,5 (RM, LB, LF) — swings in second half
+bool Platform::isLegInSwingGroup(int legIndex) const
 {
-    for (size_t i = 0; i < 6; ++i)
-    {
-        {
-            m_legs[i].MoveLegDown();
-            m_legs[i].RecalcAngles();
-        }
-    }
-}
-/*!
-     * \brief Platform::getLegToRaise - find most suitable leg to raise (most far from center)
-     * \return leg index or -1
-     */
-int Platform::getLegToRaise()
-{
-    int legToRaise = -1;
-    double maxDist = 0;
-    for (Leg &currentLeg : m_legs)
-    {
-        double curDist = currentLeg.GetDistanceFromCenter();
-        if (curDist > maxDist)
-        {
-            maxDist = curDist;
-            legToRaise = currentLeg.GetLegIndex();
-        }
-    }
-    if (maxDist < minimumDistanceStep)
-    {
-        legToRaise = -1;
-    }
-    return legToRaise;
-}
-
-void Platform::raiseOneLeg(int legToRaise)
-{
-    vec2f newPoint(m_legs[legToRaise].GetCenterVec());
-    // vec2f tmpOffsetVec=m_movementSpeed * 0.5; //TODO - uncomment for possible optimization
-    // newPoint=newPoint+tmpOffsetVec;
-    m_legs[legToRaise].MoveLegUp(newPoint);
-}
-
-void Platform::raiseTwoLegs(int legToRaise)
-{
-    raiseOneLeg(legToRaise);
-    int secondLegToRaise = (legToRaise < 3) ? (legToRaise+3) : (legToRaise-3);
-    raiseOneLeg(secondLegToRaise);
-}
-
-void Platform::raiseThreeLegs(int legToRaise)
-{
-    if (legToRaise%2 == 1)
-    {
-        raiseOneLeg(1);
-        raiseOneLeg(3);
-        raiseOneLeg(5);
-    }
-    else
-    {
-        raiseOneLeg(0);
-        raiseOneLeg(2);
-        raiseOneLeg(4);
-    }
+    const bool isTripodA = (legIndex % 2 == 0);
+    return isTripodA ? (m_gaitPhase_ < 0.5) : (m_gaitPhase_ >= 0.5);
 }
 
 void Platform::procedureGo()
 {
-    bool anyLegInAir = false;
-    for (Leg &currentLeg : m_legs)
-    {
-        if (currentLeg.leg_position != Leg::on_ground) //for leg in air - move it to center
-        {
-            anyLegInAir = true;
-            currentLeg.ProcessLegMovingInAir();
-        }
-        else // leg on a ground - move it as needed
-        {
-            currentLeg.LegAddOffsetInGlobal(m_movementSpeed.x, m_movementSpeed.y);
-            currentLeg.TurnLegWithGlobalCoord( m_rotationSpeed );
-        }
-    }
-    if (!anyLegInAir) // all 6 legs on the ground, we check, do we need to raise any leg?
-    {
+    // 1. Smooth velocities toward targets
+    const double smoothFactor = m_gaitParams.movementSmoothing;
+    m_currentMovementSpeed.x += (m_targetMovementSpeed.x - m_currentMovementSpeed.x) * smoothFactor;
+    m_currentMovementSpeed.y += (m_targetMovementSpeed.y - m_currentMovementSpeed.y) * smoothFactor;
+    m_currentRotationSpeed_deg += (m_targetRotationSpeed_deg - m_currentRotationSpeed_deg) * m_gaitParams.rotationSmoothing;
 
-        int legToRaise = getLegToRaise();
-        if (legToRaise != -1)
-        { // if we have to raise any leg - do it
-            switch (m_stepStyle) {
-            case OneLeg:
-                raiseOneLeg(legToRaise);
-                break;
-            case TwoLegs:
-                raiseTwoLegs(legToRaise);
-                break;
-            case ThreeLegs:
-                raiseThreeLegs(legToRaise);
-                break;
-            default:
+    // 2. Only advance gait if motion is meaningful or legs have drifted from center
+    double motionMag = fabs(m_currentMovementSpeed.x) + fabs(m_currentMovementSpeed.y)
+                     + fabs(m_currentRotationSpeed_deg) * 2.0;
+    bool needsStep = motionMag > 0.5;
+    if (!needsStep)
+    {
+        for (Leg &leg : m_legs)
+        {
+            if (leg.GetDistanceFromCenter() > minimumDistanceStep)
+            {
+                needsStep = true;
                 break;
             }
         }
     }
-    for (Leg &currentLeg : m_legs)
+
+    if (needsStep)
     {
-        currentLeg.RecalcAngles();
+        m_gaitPhase_ += m_gaitParams.gaitFrequency;
+        if (m_gaitPhase_ >= 1.0)
+            m_gaitPhase_ -= 1.0;
+    }
+
+    // 3. Process each leg
+    for (Leg &leg : m_legs)
+    {
+        const int idx = leg.GetLegIndex();
+        const bool inSwing = isLegInSwingGroup(idx);
+
+        if (inSwing)
+        {
+            double localPhase;
+            const bool isTripodA = (idx % 2 == 0);
+            if (isTripodA)
+                localPhase = m_gaitPhase_ / 0.5;
+            else
+                localPhase = (m_gaitPhase_ - 0.5) / 0.5;
+
+            if (!leg.IsSwinging())
+            {
+                vec2f target = leg.GetCenterVec();
+                double speed = m_currentMovementSpeed.size();
+                if (speed > 0.1)
+                {
+                    double stepLen = std::min(speed * 5.0, m_gaitParams.maxStepLength);
+                    vec2f stepDir(m_currentMovementSpeed.x / speed, m_currentMovementSpeed.y / speed);
+                    target.x += stepDir.x * stepLen;
+                    target.y += stepDir.y * stepLen;
+                }
+                leg.StartSwing(target.x, target.y);
+            }
+            leg.UpdateSwing(localPhase);
+        }
+        else
+        {
+            if (leg.IsSwinging())
+                leg.EndSwing();
+            leg.LegAddOffsetInGlobal(m_currentMovementSpeed.x, m_currentMovementSpeed.y);
+            leg.TurnLegWithGlobalCoord(m_currentRotationSpeed_deg);
+        }
+    }
+
+    // 4. Recalculate servo angles for all legs
+    for (Leg &leg : m_legs)
+    {
+        leg.RecalcAngles();
     }
 }
 

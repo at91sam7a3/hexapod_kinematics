@@ -36,4 +36,19 @@ namespace bodyConfiguration
     }
   };
 
+  struct GaitParameters
+  {
+    double movementSmoothing = 0.2;
+    double rotationSmoothing = 0.2;
+    double stepHeight = 20;
+    double maxStepLength = 25;
+    double gaitFrequency = 0.08;
+    double swingRatio = 0.5;
+
+    static GaitParameters getDefault()
+    {
+        return GaitParameters{};
+    }
+  };
+
 } // namespace bodyConfiguration

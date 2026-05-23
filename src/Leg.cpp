@@ -9,18 +9,28 @@
 
 #define DEBUG_LOG
 
+namespace
+{
+    const double PI = 3.141592654;
+}
+
 namespace hexapod
 {
 Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
     : m_servoFunction(servoFunction),
     m_bodyHeight(50),
     leg_position(on_ground),
-    currentLegrotationOffset_(0),
+    currentLegrotationOffset_deg(0),
     xPos_(0),
     yPos_(0),
     xCenterPos_(0),
     yCenterPos_(0),
     distanceFromGround_(0),
+    swingPhase_(0),
+    swingStartX_(0),
+    swingStartY_(0),
+    swingTargetX_(0),
+    swingTargetY_(0),
     m_legIndex(idx),
     movementConfiguration_(bodyConfiguration::HexapodMovementConfiguration::getDefaultSettings()),
     frame_(bodyConfiguration::HexapodFrame::getConfiguredFrame())
@@ -30,7 +40,7 @@ Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
     indexes_.push_back(idx * 3 + 1);
     indexes_.push_back(idx * 3 + 2);
     // it means leg look left of right when in math it`s degree is 0 but in real it`s servo 90
-    angleCOffsetAccordingToLegAttachment_ = -90;
+    angleCOffsetAccordingToLegAttachment_deg = -90;
     //X - front, Y - left(or right)
     // middle legs
     if ((idx == RightMiddle) || (idx == LeftMiddle))
@@ -59,7 +69,7 @@ void Leg::RecalcAngles()
 {
     if (yPos_ == 0.0)
         yPos_ = 0.01;
-    angleC_ = (atan(xPos_ / yPos_));  //this is angle between body and leg. Servo #2
+    double angleC_rad = (atan(xPos_ / yPos_));  //this is angle between body and leg. Servo #2
     double L1 = sqrt(xPos_ * xPos_ + yPos_ * yPos_); //L1 distance from leg attachment to point on ground in 2d
     double L = sqrt(pow(m_bodyHeight, 2.0) + pow((L1 - frame_.cLegPart), 2));
     if(L > (frame_.aLegPart + frame_.bLegPart))
@@ -69,17 +79,17 @@ void Leg::RecalcAngles()
         return;
     }
     // angle alpfa
-    angleA_ = acos((m_bodyHeight - distanceFromGround_) / L) + acos(((pow(frame_.aLegPart, 2) - pow(frame_.bLegPart, 2) - pow(L, 2))) / (-2 * frame_.bLegPart * L));
+    double angleA_rad = acos((m_bodyHeight - distanceFromGround_) / L) + acos(((pow(frame_.aLegPart, 2) - pow(frame_.bLegPart, 2) - pow(L, 2))) / (-2 * frame_.bLegPart * L));
     // angle beta
-    angleB_ = acos((pow(L, 2) - pow(frame_.aLegPart, 2) - pow(frame_.bLegPart, 2)) / (-2 * frame_.aLegPart * frame_.bLegPart));
+    double angleB_rad = acos((pow(L, 2) - pow(frame_.aLegPart, 2) - pow(frame_.bLegPart, 2)) / (-2 * frame_.aLegPart * frame_.bLegPart));
 
     // set angles directly to servos
-    angleA_ = angleA_ * 180 / 3.1415;
-    angleB_ = angleB_ * 180 / 3.1415;
-    angleC_ = angleC_ * 180 / 3.1415;
-    SetMotorAngle(0, angleA_);
-    SetMotorAngle(1, angleB_);
-    SetMotorAngle(2, angleC_);
+    angleA_deg = angleA_rad * 180 / 3.1415;
+    angleB_deg = angleB_rad * 180 / 3.1415;
+    angleC_deg = angleC_rad * 180 / 3.1415;
+    SetMotorAngle(0, angleA_deg);
+    SetMotorAngle(1, angleB_deg);
+    SetMotorAngle(2, angleC_deg);
 }
 
 void Leg::SetLocalXY(double x, double y) // TODO
@@ -133,40 +143,40 @@ double Leg::GetLegDirectionInGlobalCoordinates()
     }
 }
 
-void Leg::SetMotorAngle(int idx, double angle)
+void Leg::SetMotorAngle(int idx, double angle_deg)
 {
     try {
 
-        float finalAngle = 0;
+        float finalAngle_deg = 0;
         switch (idx)
         {
         case 0:
-            finalAngle = angle;
+            finalAngle_deg = angle_deg;
 
             break;
         case 1:
-            finalAngle = 180 - angle;
+            finalAngle_deg = 180 - angle_deg;
             break;
         case 2:
-            finalAngle = angle - angleCOffsetAccordingToLegAttachment_;
+            finalAngle_deg = angle_deg - angleCOffsetAccordingToLegAttachment_deg;
             break;
         default:
             throw(std::runtime_error("Wrong motor index"));
         }
 
-        if(finalAngle<0) finalAngle = 0;
-        if(finalAngle>180) finalAngle = 180;
-        m_servoFunction(indexes_[idx], finalAngle);
+        if(finalAngle_deg<0) finalAngle_deg = 0;
+        if(finalAngle_deg>180) finalAngle_deg = 180;
+        m_servoFunction(indexes_[idx], finalAngle_deg);
     }
     catch(std::runtime_error& e)
     {
         std::cerr<<e.what()<<std::endl;
         std::cerr<<"error situation: "<<std::endl;
         std::cerr<<" xPos = "<<xPos_<<" yPos = "<<yPos_<<std::endl;
-        std::cerr<<"angle = "<<angle<<" idx = "<<idx<<std::endl;
-        std::cerr<<"angleA = "<<angleA_<<std::endl;
-        std::cerr<<"angleB = "<<angleB_<<std::endl;
-        std::cerr<<"angleC = "<<angleC_<<std::endl;
+        std::cerr<<"angle = "<<angle_deg<<" idx = "<<idx<<std::endl;
+        std::cerr<<"angleA = "<<angleA_deg<<std::endl;
+        std::cerr<<"angleB = "<<angleB_deg<<std::endl;
+        std::cerr<<"angleC = "<<angleC_deg<<std::endl;
         std::cerr<<"m_bodyHeight = "<<m_bodyHeight<<" distanceFromGround_ = "<<distanceFromGround_<<std::endl;
     }
 }
@@ -212,6 +222,40 @@ void Leg::MoveLegUp(vec2f newPositionOnGround)
     leg_position = moving_up;
 }
 
+void Leg::StartSwing(double targetX, double targetY)
+{
+    swingStartX_ = xPos_;
+    swingStartY_ = yPos_;
+    swingTargetX_ = targetX;
+    swingTargetY_ = targetY;
+    swingPhase_ = 0.001;
+    distanceFromGround_ = movementConfiguration_.stepHeight * sin(swingPhase_ * PI);
+    leg_position = moving_up;
+}
+
+void Leg::UpdateSwing(double phase)
+{
+    if (phase >= 1.0)
+    {
+        EndSwing();
+        return;
+    }
+    swingPhase_ = phase;
+    double zFactor = sin(swingPhase_ * PI);
+    distanceFromGround_ = movementConfiguration_.stepHeight * zFactor;
+    xPos_ = swingStartX_ + (swingTargetX_ - swingStartX_) * swingPhase_;
+    yPos_ = swingStartY_ + (swingTargetY_ - swingStartY_) * swingPhase_;
+}
+
+void Leg::EndSwing()
+{
+    swingPhase_ = 0.0;
+    distanceFromGround_ = 0.0;
+    xPos_ = swingTargetX_;
+    yPos_ = swingTargetY_;
+    leg_position = on_ground;
+}
+
 void Leg::ProcessLegMovingInAir()
 {
     if (leg_position == moving_up)
@@ -239,14 +283,14 @@ vec2f Leg::GetCenterVec()
 
 double Leg::GetLegLocalZAngle()
 {
-    return angleC_;
+    return angleC_deg;
 }
 // Next 3 methods are needed for rotation
 
-void Leg::TurnLegWithGlobalCoord(double offset)
+void Leg::TurnLegWithGlobalCoord(double offset_deg)
 {
     vec2f currentGlobalPos = GetLegGlobalCoord();
-    currentGlobalPos.rotate(offset);
+    currentGlobalPos.rotate(offset_deg);
     vec2f lc = GlobalToLocal(currentGlobalPos);
     SetLocalXY(lc.x, lc.y);
 }
