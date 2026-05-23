@@ -226,6 +226,9 @@ void Platform::prepareToGo()
         m_legs[i].RecalcAngles();
         movementDelay();
         movementDelay();
+
+        if (i < 5)
+            m_sleepMsFunction(500);
     }
 }
 
