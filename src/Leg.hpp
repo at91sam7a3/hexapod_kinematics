@@ -75,6 +75,10 @@ namespace hexapod
         void MoveLegUp(vec2f newPositionOnGround);
         void SetMotorAngle(int idx, double angle_deg);
         void ProcessLegMovingInAir();
+        void StartSwing(double targetX, double targetY);
+        void UpdateSwing(double phase);
+        void EndSwing();
+        bool IsSwinging() const { return swingPhase_ > 0.0; }
         int GetLegIndex();
         vec2f GetCenterVec();
         double GetDistanceFromCenter();
@@ -114,6 +118,12 @@ namespace hexapod
         std::vector<int> indexes_;
         int m_legIndex;
         float angleCOffsetAccordingToLegAttachment_deg;
+        // swing state
+        double swingPhase_;
+        double swingStartX_;
+        double swingStartY_;
+        double swingTargetX_;
+        double swingTargetY_;
         bodyConfiguration::HexapodMovementConfiguration movementConfiguration_;
         bodyConfiguration::HexapodFrame frame_;
     };

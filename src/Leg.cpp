@@ -9,6 +9,11 @@
 
 #define DEBUG_LOG
 
+namespace
+{
+    const double PI = 3.141592654;
+}
+
 namespace hexapod
 {
 Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
@@ -21,6 +26,11 @@ Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
     xCenterPos_(0),
     yCenterPos_(0),
     distanceFromGround_(0),
+    swingPhase_(0),
+    swingStartX_(0),
+    swingStartY_(0),
+    swingTargetX_(0),
+    swingTargetY_(0),
     m_legIndex(idx),
     movementConfiguration_(bodyConfiguration::HexapodMovementConfiguration::getDefaultSettings()),
     frame_(bodyConfiguration::HexapodFrame::getConfiguredFrame())
@@ -210,6 +220,40 @@ void Leg::MoveLegUp(vec2f newPositionOnGround)
     newPositionOnGround_ = newPositionOnGround;
     distanceFromGround_ = movementConfiguration_.stepHeight;
     leg_position = moving_up;
+}
+
+void Leg::StartSwing(double targetX, double targetY)
+{
+    swingStartX_ = xPos_;
+    swingStartY_ = yPos_;
+    swingTargetX_ = targetX;
+    swingTargetY_ = targetY;
+    swingPhase_ = 0.001;
+    distanceFromGround_ = movementConfiguration_.stepHeight * sin(swingPhase_ * PI);
+    leg_position = moving_up;
+}
+
+void Leg::UpdateSwing(double phase)
+{
+    if (phase >= 1.0)
+    {
+        EndSwing();
+        return;
+    }
+    swingPhase_ = phase;
+    double zFactor = sin(swingPhase_ * PI);
+    distanceFromGround_ = movementConfiguration_.stepHeight * zFactor;
+    xPos_ = swingStartX_ + (swingTargetX_ - swingStartX_) * swingPhase_;
+    yPos_ = swingStartY_ + (swingTargetY_ - swingStartY_) * swingPhase_;
+}
+
+void Leg::EndSwing()
+{
+    swingPhase_ = 0.0;
+    distanceFromGround_ = 0.0;
+    xPos_ = swingTargetX_;
+    yPos_ = swingTargetY_;
+    leg_position = on_ground;
 }
 
 void Leg::ProcessLegMovingInAir()

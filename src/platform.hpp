@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Leg.hpp"
+#include "bodyConfiguration.hpp"
 #include <atomic>
 #include <memory>
 #include <thread>
@@ -35,20 +36,21 @@ namespace hexapod
         void prepareToGo();
         void setLegCenter(int idx, float x, float y, float height);
         std::pair<float,float> getLegCenter(int idx);
+        void setGaitParameters(const bodyConfiguration::GaitParameters& params);
         void procedureGo();
     private:
         void movementThread();
-        void movingEnd();
         void movementDelay();
-        int getLegToRaise();
-        void raiseOneLeg(int legToRaise);
-        void raiseTwoLegs(int legToRaise);
-        void raiseThreeLegs(int legToRaise);
+        bool isLegInSwingGroup(int legIndex) const;
     private:
         std::vector<Leg> m_legs;
         double m_bodyHeight;
-        double m_rotationSpeed_deg;
-        vec2f m_movementSpeed;
+        vec2f m_targetMovementSpeed;
+        vec2f m_currentMovementSpeed;
+        double m_targetRotationSpeed_deg;
+        double m_currentRotationSpeed_deg;
+        double m_gaitPhase_;
+        bodyConfiguration::GaitParameters m_gaitParams;
         std::function<void(int)> m_sleepMsFunction;
         std::function<void(int, double)> m_servoPositionFunction;
         std::function<void()> m_readSensorsFunction;
@@ -57,4 +59,3 @@ namespace hexapod
         int m_kinematicPeriod;
     };
 } //namespace hexaod
-
