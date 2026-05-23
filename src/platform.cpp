@@ -123,10 +123,28 @@ void Platform::procedureGo()
     m_currentMovementSpeed.y += (m_targetMovementSpeed.y - m_currentMovementSpeed.y) * smoothFactor;
     m_currentRotationSpeed_deg += (m_targetRotationSpeed_deg - m_currentRotationSpeed_deg) * m_gaitParams.rotationSmoothing;
 
-    // 2. Advance gait phase
-    m_gaitPhase_ += m_gaitParams.gaitFrequency;
-    if (m_gaitPhase_ >= 1.0)
-        m_gaitPhase_ -= 1.0;
+    // 2. Only advance gait if motion is meaningful or legs have drifted from center
+    double motionMag = fabs(m_currentMovementSpeed.x) + fabs(m_currentMovementSpeed.y)
+                     + fabs(m_currentRotationSpeed_deg) * 2.0;
+    bool needsStep = motionMag > 0.5;
+    if (!needsStep)
+    {
+        for (Leg &leg : m_legs)
+        {
+            if (leg.GetDistanceFromCenter() > minimumDistanceStep)
+            {
+                needsStep = true;
+                break;
+            }
+        }
+    }
+
+    if (needsStep)
+    {
+        m_gaitPhase_ += m_gaitParams.gaitFrequency;
+        if (m_gaitPhase_ >= 1.0)
+            m_gaitPhase_ -= 1.0;
+    }
 
     // 3. Process each leg
     for (Leg &leg : m_legs)
