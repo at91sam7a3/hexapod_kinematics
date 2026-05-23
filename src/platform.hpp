@@ -26,7 +26,7 @@ namespace hexapod
                  int kinematic_period=100);
         /*Move legs into transportable position*/
         void parkLegs();        
-        void setVelocity(const vec2f movementSpeed, const double rotationSpeed);
+        void setVelocity(const vec2f movementSpeed, const double rotationSpeed_deg);
         void setWalkingStyle(StepStyle style);
         void setBodyHeight(const float height);
         float getBodyHeight() const;
@@ -47,7 +47,7 @@ namespace hexapod
     private:
         std::vector<Leg> m_legs;
         double m_bodyHeight;
-        double m_rotationSpeed;
+        double m_rotationSpeed_deg;
         vec2f m_movementSpeed;
         std::function<void(int)> m_sleepMsFunction;
         std::function<void(int, double)> m_servoPositionFunction;

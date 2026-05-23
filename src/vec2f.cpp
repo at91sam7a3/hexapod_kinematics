@@ -12,11 +12,11 @@ double vec2f::getDistance(vec2f first, vec2f second)
     return sqrt(first.x * second.x + first.y * second.y);
 }
 
-void vec2f::rotate(double angle)
+void vec2f::rotate(double angle_deg)
 {
-    double tmpAngle = angle * PI / 180.0;
-    double tmpx = (cos(tmpAngle) * x) - (sin(tmpAngle) * y);
-    double tmpy = (sin(tmpAngle) * x) + (cos(tmpAngle) * y);
+    double tmpAngle_rad = angle_deg * PI / 180.0;
+    double tmpx = (cos(tmpAngle_rad) * x) - (sin(tmpAngle_rad) * y);
+    double tmpy = (sin(tmpAngle_rad) * x) + (cos(tmpAngle_rad) * y);
     x = tmpx;
     y = tmpy;
 }
@@ -66,14 +66,14 @@ double vec2f::vectorAngle()
     else if (y == 0) // special cases
         return (x >= 0) ? 0
                         : 180;
-    int ret = radToDeg(atanf((float)y / x));
+    int ret_deg = radToDeg(atanf((float)y / x));
     if (x < 0 && y < 0) // quadrant Ⅲ
-        ret = 180 + ret;
+        ret_deg = 180 + ret_deg;
     else if (x < 0)             // quadrant Ⅱ
-        ret = 180 + ret;        // it actually substracts
+        ret_deg = 180 + ret_deg;        // it actually substracts
     else if (y < 0)             // quadrant Ⅳ
-        ret = 270 + (90 + ret); // it actually substracts
-    return ret;
+        ret_deg = 270 + (90 + ret_deg); // it actually substracts
+    return ret_deg;
 }
 
 }

@@ -73,12 +73,12 @@ namespace hexapod
          */
         void MoveLegToCenter();        
         void MoveLegUp(vec2f newPositionOnGround);
-        void SetMotorAngle(int idx, double angle);
+        void SetMotorAngle(int idx, double angle_deg);
         void ProcessLegMovingInAir();
         int GetLegIndex();
         vec2f GetCenterVec();
         double GetDistanceFromCenter();
-        void TurnLegWithGlobalCoord(double offset);
+        void TurnLegWithGlobalCoord(double offset_deg);
         enum LegPosition
         {
             on_ground = 0,
@@ -94,7 +94,7 @@ namespace hexapod
         // get Leg angle
         double GetLegDirectionInGlobalCoordinates();
         // this is needed only for rotating procesure
-        float currentLegrotationOffset_;
+        float currentLegrotationOffset_deg;
         double GetLegLocalZAngle();
         vec2f GetLegGlobalCoord();
 
@@ -106,14 +106,14 @@ namespace hexapod
         double yCenterPos_;
         vec2f newPositionOnGround_;
         double distanceFromGround_;
-        // output, angles in radians
-        double angleA_;
-        double angleB_;
-        double angleC_;
+        // output, angles in degrees
+        double angleA_deg;
+        double angleB_deg;
+        double angleC_deg;
         // setted servos numbers
         std::vector<int> indexes_;
         int m_legIndex;
-        float angleCOffsetAccordingToLegAttachment_;
+        float angleCOffsetAccordingToLegAttachment_deg;
         bodyConfiguration::HexapodMovementConfiguration movementConfiguration_;
         bodyConfiguration::HexapodFrame frame_;
     };

@@ -13,7 +13,7 @@ namespace hexapod
         double x;
         double y;
 
-        void rotate(double angle);
+        void rotate(double angle_deg);
         static double getDistance(vec2f first, vec2f second);
         vec2f operator+(const vec2f &sum);
         vec2f operator-(const vec2f &sum);

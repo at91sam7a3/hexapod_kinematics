@@ -39,10 +39,10 @@ void Platform::parkLegs()
 
 }
 
-void Platform::setVelocity(const vec2f movementSpeed, const double rotationSpeed)
+void Platform::setVelocity(const vec2f movementSpeed, const double rotationSpeed_deg)
 {
     m_movementSpeed = movementSpeed;
-    m_rotationSpeed = rotationSpeed;
+    m_rotationSpeed_deg = rotationSpeed_deg;
 }
 
 void Platform::setWalkingStyle(StepStyle style)
@@ -54,7 +54,7 @@ Platform::Platform(std::function<void(int)> sleepMsFuction,
                    std::function<void(int, double)> servoPositionFunction,
                    std::function<void()> readSensorsFunction,
                    int kinematic_period)
-    : m_rotationSpeed(0.0f)
+    : m_rotationSpeed_deg(0.0f)
     , m_movementSpeed(0.0f, 0.0f)
     , m_sleepMsFunction(sleepMsFuction)
     , m_servoPositionFunction(servoPositionFunction)
@@ -176,7 +176,7 @@ void Platform::procedureGo()
         else // leg on a ground - move it as needed
         {
             currentLeg.LegAddOffsetInGlobal(m_movementSpeed.x, m_movementSpeed.y);
-            currentLeg.TurnLegWithGlobalCoord( m_rotationSpeed );
+            currentLeg.TurnLegWithGlobalCoord( m_rotationSpeed_deg );
         }
     }
     if (!anyLegInAir) // all 6 legs on the ground, we check, do we need to raise any leg?
