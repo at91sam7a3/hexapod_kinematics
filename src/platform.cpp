@@ -69,7 +69,7 @@ Platform::Platform(std::function<void(int)> sleepMsFuction,
     , m_servoPositionFunction(servoPositionFunction)
     , m_readSensorsFunction(readSensorsFunction)
     , m_active(false)
-    , m_stepStyle(OneLeg)
+    , m_stepStyle(ThreeLegs)
     , m_kinematicPeriod(kinematic_period)
 {
     for (int i = 0; i < 6; ++i)
