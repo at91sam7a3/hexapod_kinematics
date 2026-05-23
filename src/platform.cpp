@@ -154,15 +154,13 @@ void Platform::procedureGo()
 
         if (inSwing)
         {
-            double localPhase;
-            const bool isTripodA = (idx % 2 == 0);
-            if (isTripodA)
-                localPhase = m_gaitPhase_ / 0.5;
-            else
-                localPhase = (m_gaitPhase_ - 0.5) / 0.5;
-
             if (!leg.IsSwinging())
             {
+                if (!needsStep)
+                {
+                    // Don't start a new swing when stopping
+                    continue;
+                }
                 vec2f target = leg.GetCenterVec();
                 double speed = m_currentMovementSpeed.size();
                 if (speed > 0.1)
@@ -174,7 +172,26 @@ void Platform::procedureGo()
                 }
                 leg.StartSwing(target.x, target.y);
             }
-            leg.UpdateSwing(localPhase);
+
+            if (!needsStep)
+            {
+                // Force-complete the swing smoothly when stopping
+                double p = leg.GetSwingPhase() + 0.15;
+                if (p >= 1.0)
+                    leg.EndSwing();
+                else
+                    leg.UpdateSwing(p);
+            }
+            else
+            {
+                double localPhase;
+                const bool isTripodA = (idx % 2 == 0);
+                if (isTripodA)
+                    localPhase = m_gaitPhase_ / 0.5;
+                else
+                    localPhase = (m_gaitPhase_ - 0.5) / 0.5;
+                leg.UpdateSwing(localPhase);
+            }
         }
         else
         {

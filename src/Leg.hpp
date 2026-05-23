@@ -79,6 +79,7 @@ namespace hexapod
         void UpdateSwing(double phase);
         void EndSwing();
         bool IsSwinging() const { return swingPhase_ > 0.0; }
+        double GetSwingPhase() const { return swingPhase_; }
         int GetLegIndex();
         vec2f GetCenterVec();
         double GetDistanceFromCenter();
