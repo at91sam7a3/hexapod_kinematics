@@ -15,14 +15,14 @@ namespace hexapod
 
         void rotate(double angle_deg);
         static double getDistance(vec2f first, vec2f second);
-        vec2f operator+(const vec2f &sum);
-        vec2f operator-(const vec2f &sum);
-        vec2f operator*(const double size);
+        vec2f operator+(const vec2f &sum) const;
+        vec2f operator-(const vec2f &sum) const;
+        vec2f operator*(double size) const;
         vec2f &operator += (const vec2f &rhs);
         vec2f &operator -= (const vec2f &rhs);
-        double size();
-        int radToDeg(float rad);
-        double vectorAngle();
+        double size() const;
+        double radToDeg(double rad) const;
+        double vectorAngle() const;
     };
 
 }

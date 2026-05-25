@@ -37,53 +37,52 @@ namespace hexapod
     {
     public:
         Leg(std::function<void(int, double)> servoFunction, int legIndex);
-        /*!
-         * \brief RecalcAngles update new servo angles depending on a end of a leg position.
-         *        Needed to be called after and leg coordinates changes
-         */
+
         void RecalcAngles();
-        /*!
-         * \brief SetLocalXY this method control leg end position
-         */
+
         void SetLocalXY(double, double);
-        /*!
-         * \brief LegAddOffsetInGlobal - with this method we move end of our leg in needed direction
-         */
+
         void LegAddOffsetInGlobal(double, double);
-        /*!
-         * \brief SetLegCoord
-         * \param lc - setter for leg coordinates
-         */
-        void SetLegCoord(LegCoodinates &lc);
-        /*!
-         * \brief IsInCenter - this method checks - is leg coordinates already in the senter zone
-         * \return
-         */
-        bool IsInCenter();
-        /*!
-         * \brief MoveLegUp - Raise the leg
-         */
+
+        void SetLegCoord(const LegCoodinates& lc);
+
+        bool IsInCenter() const;
+
         void MoveLegUp();
-        /*!
-         * \brief MoveLegDown - move leg to the ground level - 0 height
-         */
+
         void MoveLegDown();
-        /*!
-         * \brief MoveLegToCenter - move leg position to the center
-         */
-        void MoveLegToCenter();        
+
+        void MoveLegToCenter();
+
         void MoveLegUp(vec2f newPositionOnGround);
+
         void SetMotorAngle(int idx, double angle_deg);
+
         void ProcessLegMovingInAir();
+
         void StartSwing(double targetX, double targetY);
+
         void UpdateSwing(double phase);
+
         void EndSwing();
+
         bool IsSwinging() const { return swingPhase_ > 0.0; }
+
         double GetSwingPhase() const { return swingPhase_; }
-        int GetLegIndex();
-        vec2f GetCenterVec();
-        double GetDistanceFromCenter();
+
+        int GetLegIndex() const;
+
+        vec2f GetCenterVec() const;
+
+        double GetDistanceFromCenter() const;
+
         void TurnLegWithGlobalCoord(double offset_deg);
+
+        double m_bodyHeight;
+
+        LegCoodinates GetLegCoord() const;
+
+    private:
         enum LegPosition
         {
             on_ground = 0,
@@ -91,17 +90,16 @@ namespace hexapod
             moving_to_target,
             moving_down
         } leg_position;
-        double m_bodyHeight;
-        LegCoodinates GetLegCoord();
-    private:
-        // convert global coordinates to local for this leg
-        vec2f GlobalToLocal(vec2f &lc);
-        // get Leg angle
-        double GetLegDirectionInGlobalCoordinates();
-        // this is needed only for rotating procesure
+
+        vec2f GlobalToLocal(const vec2f& lc) const;
+
+        double GetLegDirectionInGlobalCoordinates() const;
+
         float currentLegrotationOffset_deg;
-        double GetLegLocalZAngle();
-        vec2f GetLegGlobalCoord();
+
+        double GetLegLocalZAngle() const;
+
+        vec2f GetLegGlobalCoord() const;
 
     private:
         std::function<void(int, double)> m_servoFunction;

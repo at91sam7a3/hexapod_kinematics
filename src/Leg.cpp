@@ -1,17 +1,13 @@
-#pragma once
-
 #include "Leg.hpp"
 #include "bodyConfiguration.hpp"
-#include <math.h>
+#include <cmath>
 #include "vec2f.hpp"
 #include <stdexcept>
 #include <iostream>
 
-#define DEBUG_LOG
-
 namespace
 {
-    const double PI = 3.141592654;
+    constexpr double PI = 3.141592654;
 }
 
 namespace hexapod
@@ -67,26 +63,23 @@ Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
 
 void Leg::RecalcAngles()
 {
-    if (yPos_ == 0.0)
-        yPos_ = 0.01;
-    double angleC_rad = (atan(xPos_ / yPos_));  //this is angle between body and leg. Servo #2
-    double L1 = sqrt(xPos_ * xPos_ + yPos_ * yPos_); //L1 distance from leg attachment to point on ground in 2d
-    double L = sqrt(pow(m_bodyHeight, 2.0) + pow((L1 - frame_.cLegPart), 2));
-    if(L > (frame_.aLegPart + frame_.bLegPart))
-    {
-        //oops, we cannot solve this
-        //lets just do nothing
+    double angleC_rad = std::atan2(xPos_, yPos_);
+    double L1 = std::sqrt(xPos_ * xPos_ + yPos_ * yPos_);
+    double dh = m_bodyHeight - distanceFromGround_;
+    double dL = L1 - frame_.cLegPart;
+    double L = std::sqrt(dh * dh + dL * dL);
+    if (L > (frame_.aLegPart + frame_.bLegPart))
         return;
-    }
-    // angle alpfa
-    double angleA_rad = acos((m_bodyHeight - distanceFromGround_) / L) + acos(((pow(frame_.aLegPart, 2) - pow(frame_.bLegPart, 2) - pow(L, 2))) / (-2 * frame_.bLegPart * L));
-    // angle beta
-    double angleB_rad = acos((pow(L, 2) - pow(frame_.aLegPart, 2) - pow(frame_.bLegPart, 2)) / (-2 * frame_.aLegPart * frame_.bLegPart));
 
-    // set angles directly to servos
-    angleA_deg = angleA_rad * 180 / 3.1415;
-    angleB_deg = angleB_rad * 180 / 3.1415;
-    angleC_deg = angleC_rad * 180 / 3.1415;
+    double aSq = frame_.aLegPart * frame_.aLegPart;
+    double bSq = frame_.bLegPart * frame_.bLegPart;
+    double angleA_rad = std::acos(dh / L) + std::acos((aSq - bSq - L * L) / (-2.0 * frame_.bLegPart * L));
+    double angleB_rad = std::acos((L * L - aSq - bSq) / (-2.0 * frame_.aLegPart * frame_.bLegPart));
+
+    constexpr double radToDeg = 180.0 / PI;
+    angleA_deg = angleA_rad * radToDeg;
+    angleB_deg = angleB_rad * radToDeg;
+    angleC_deg = angleC_rad * radToDeg;
     SetMotorAngle(0, angleA_deg);
     SetMotorAngle(1, angleB_deg);
     SetMotorAngle(2, angleC_deg);
@@ -111,19 +104,19 @@ void Leg::LegAddOffsetInGlobal(double xoffset, double yoffset)
     }
 }
 
-void Leg::SetLegCoord(LegCoodinates &lc)
+void Leg::SetLegCoord(const LegCoodinates& lc)
 {
     SetLocalXY(lc.x, lc.y);
     distanceFromGround_ = lc.height;
 }
 
-LegCoodinates Leg::GetLegCoord()
+LegCoodinates Leg::GetLegCoord() const
 {
     LegCoodinates lc(xPos_, yPos_, distanceFromGround_);
     return lc;
 }
 
-double Leg::GetLegDirectionInGlobalCoordinates()
+double Leg::GetLegDirectionInGlobalCoordinates() const
 {
 
     switch (m_legIndex)
@@ -146,13 +139,11 @@ double Leg::GetLegDirectionInGlobalCoordinates()
 void Leg::SetMotorAngle(int idx, double angle_deg)
 {
     try {
-
-        float finalAngle_deg = 0;
+        double finalAngle_deg = 0;
         switch (idx)
         {
         case 0:
             finalAngle_deg = angle_deg;
-
             break;
         case 1:
             finalAngle_deg = 180 - angle_deg;
@@ -164,8 +155,8 @@ void Leg::SetMotorAngle(int idx, double angle_deg)
             throw(std::runtime_error("Wrong motor index"));
         }
 
-        if(finalAngle_deg<0) finalAngle_deg = 0;
-        if(finalAngle_deg>180) finalAngle_deg = 180;
+        if (finalAngle_deg < 0) finalAngle_deg = 0;
+        if (finalAngle_deg > 180) finalAngle_deg = 180;
         m_servoFunction(indexes_[idx], finalAngle_deg);
     }
     catch(std::runtime_error& e)
@@ -181,18 +172,16 @@ void Leg::SetMotorAngle(int idx, double angle_deg)
     }
 }
 
-double Leg::GetDistanceFromCenter()
+double Leg::GetDistanceFromCenter() const
 {
-    double xDist = fabs(xPos_ - xCenterPos_);
-    double yDist = fabs(yPos_ - yCenterPos_);
-    return sqrt(xDist * xDist + yDist * yDist);
+    double xDist = std::abs(xPos_ - xCenterPos_);
+    double yDist = std::abs(yPos_ - yCenterPos_);
+    return std::sqrt(xDist * xDist + yDist * yDist);
 }
 
-bool Leg::IsInCenter()
+bool Leg::IsInCenter() const
 {
-    if ((fabs(xPos_ - xCenterPos_) < 0.001) && (fabs(yPos_ - yCenterPos_) < 0.001))
-        return true;
-    return false;
+    return (std::abs(xPos_ - xCenterPos_) < 0.001) && (std::abs(yPos_ - yCenterPos_) < 0.001);
 }
 
 void Leg::MoveLegUp()
@@ -271,17 +260,17 @@ void Leg::ProcessLegMovingInAir()
     }
 }
 
-int Leg::GetLegIndex()
+int Leg::GetLegIndex() const
 {
     return m_legIndex;
 }
 
-vec2f Leg::GetCenterVec()
+vec2f Leg::GetCenterVec() const
 {
     return vec2f(xCenterPos_, yCenterPos_);
 }
 
-double Leg::GetLegLocalZAngle()
+double Leg::GetLegLocalZAngle() const
 {
     return angleC_deg;
 }
@@ -295,7 +284,7 @@ void Leg::TurnLegWithGlobalCoord(double offset_deg)
     SetLocalXY(lc.x, lc.y);
 }
 
-vec2f Leg::GetLegGlobalCoord()
+vec2f Leg::GetLegGlobalCoord() const
 {
     vec2f res;
 
@@ -334,12 +323,11 @@ vec2f Leg::GetLegGlobalCoord()
 
 // X axis looks front
 // Y axit looks left
-vec2f Leg::GlobalToLocal(vec2f &lc)
+vec2f Leg::GlobalToLocal(const vec2f& lc) const
 {
     vec2f res;
     switch (m_legIndex)
     {
-
     case RightMiddle:
         res.x = lc.x;
         res.y = lc.y - frame_.centerYOffset;
@@ -348,7 +336,6 @@ vec2f Leg::GlobalToLocal(vec2f &lc)
         res.x = lc.x;
         res.y = -lc.y - frame_.centerYOffset;
         break;
-
     case RightFront:
         res.x = lc.x - frame_.rearXOffset;
         res.y = lc.y - frame_.rearYOffset;
@@ -357,7 +344,6 @@ vec2f Leg::GlobalToLocal(vec2f &lc)
         res.x = lc.x + frame_.rearXOffset;
         res.y = lc.y - frame_.rearYOffset;
         break;
-
     case LeftFront:
         res.x = lc.x - frame_.rearXOffset;
         res.y = -lc.y - frame_.rearYOffset;
@@ -366,10 +352,9 @@ vec2f Leg::GlobalToLocal(vec2f &lc)
         res.x = lc.x + frame_.rearXOffset;
         res.y = -lc.y - frame_.rearYOffset;
         break;
-
     default:
         break;
     }
     return res;
-};
+}
 }

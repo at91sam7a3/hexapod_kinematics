@@ -3,7 +3,6 @@
 #include "Leg.hpp"
 #include "bodyConfiguration.hpp"
 #include <atomic>
-#include <memory>
 #include <thread>
 #include <vector>
 #include <functional>
@@ -21,13 +20,13 @@ namespace hexapod
             ThreeLegs
         };
 
-        Platform(std::function<void(int)> sleepFuction,
+        Platform(std::function<void(int)> sleepMsFunction,
                  std::function<void(int, double)> servoPositionFunction,
                  std::function<void()> readSensorsFunction,
                  int kinematic_period=100);
         /*Move legs into transportable position*/
         void parkLegs();        
-        void setVelocity(const vec2f movementSpeed, const double rotationSpeed_deg);
+        void setVelocity(const vec2f& movementSpeed, double rotationSpeed_deg);
         void setWalkingStyle(StepStyle style);
         void setBodyHeight(const float height);
         float getBodyHeight() const;

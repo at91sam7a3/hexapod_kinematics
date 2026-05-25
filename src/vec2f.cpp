@@ -9,7 +9,9 @@ namespace
 }
 double vec2f::getDistance(vec2f first, vec2f second)
 {
-    return sqrt(first.x * second.x + first.y * second.y);
+    double dx = first.x - second.x;
+    double dy = first.y - second.y;
+    return std::sqrt(dx * dx + dy * dy);
 }
 
 void vec2f::rotate(double angle_deg)
@@ -21,21 +23,21 @@ void vec2f::rotate(double angle_deg)
     y = tmpy;
 }
 
-vec2f vec2f::operator+(const vec2f &sum)
+vec2f vec2f::operator+(const vec2f &sum) const
 {
     return vec2f(x + sum.x, y + sum.y);
 }
-vec2f vec2f::operator-(const vec2f &sum)
+vec2f vec2f::operator-(const vec2f &sum) const
 {
     return vec2f(x - sum.x, y - sum.y);
 }
-vec2f vec2f::operator*(const double size)
+vec2f vec2f::operator*(double size) const
 {
     return vec2f(x * size, y * size);
 }
-double vec2f::size()
+double vec2f::size() const
 {
-    return (sqrt((x * x) + (y * y)));
+    return std::sqrt(x * x + y * y);
 }
 
 vec2f &vec2f::operator += (const vec2f &rhs)
@@ -52,28 +54,14 @@ vec2f &vec2f::operator -= (const vec2f &rhs)
     return *this;
 }
 
-int vec2f::radToDeg(float rad)
+double vec2f::radToDeg(double rad) const
 {
-    return rad * (180 / M_PI);
+    return rad * (180.0 / PI);
 }
 
-double vec2f::vectorAngle()
+double vec2f::vectorAngle() const
 {
-    if (x == 0) // special cases
-        return (y > 0)    ? 90
-               : (y == 0) ? 0
-                          : 270;
-    else if (y == 0) // special cases
-        return (x >= 0) ? 0
-                        : 180;
-    int ret_deg = radToDeg(atanf((float)y / x));
-    if (x < 0 && y < 0) // quadrant Ⅲ
-        ret_deg = 180 + ret_deg;
-    else if (x < 0)             // quadrant Ⅱ
-        ret_deg = 180 + ret_deg;        // it actually substracts
-    else if (y < 0)             // quadrant Ⅳ
-        ret_deg = 270 + (90 + ret_deg); // it actually substracts
-    return ret_deg;
+    return std::atan2(y, x) * 180.0 / PI;
 }
 
 }

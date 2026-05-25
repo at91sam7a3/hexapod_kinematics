@@ -1,9 +1,4 @@
-#pragma once
-
 #include "platform.hpp"
-#include <iostream>
-#include <chrono>
-#include <thread>
 #include <cmath>
 
 namespace hexapod
@@ -23,8 +18,7 @@ This is schematic of a robot motors positions
 */
 namespace
 {
-const double PI = 3.141592654;
-const double minimumDistanceStep = 30; // TODO requires experiments
+constexpr double minimumDistanceStep = 30;
 }
 
 // place legs in compact position for transportation
@@ -39,7 +33,7 @@ void Platform::parkLegs()
 
 }
 
-void Platform::setVelocity(const vec2f movementSpeed, const double rotationSpeed_deg)
+void Platform::setVelocity(const vec2f& movementSpeed, double rotationSpeed_deg)
 {
     m_targetMovementSpeed = movementSpeed;
     m_targetRotationSpeed_deg = rotationSpeed_deg;
@@ -55,7 +49,7 @@ void Platform::setGaitParameters(const bodyConfiguration::GaitParameters& params
     m_gaitParams = params;
 }
 
-Platform::Platform(std::function<void(int)> sleepMsFuction,
+Platform::Platform(std::function<void(int)> sleepMsFunction,
                    std::function<void(int, double)> servoPositionFunction,
                    std::function<void()> readSensorsFunction,
                    int kinematic_period)
@@ -65,7 +59,7 @@ Platform::Platform(std::function<void(int)> sleepMsFuction,
     , m_currentMovementSpeed(0.0, 0.0)
     , m_gaitPhase_(0.0)
     , m_gaitParams(bodyConfiguration::GaitParameters::getDefault())
-    , m_sleepMsFunction(sleepMsFuction)
+    , m_sleepMsFunction(sleepMsFunction)
     , m_servoPositionFunction(servoPositionFunction)
     , m_readSensorsFunction(readSensorsFunction)
     , m_active(false)
@@ -79,12 +73,12 @@ Platform::Platform(std::function<void(int)> sleepMsFuction,
     }
 }
 
-void Platform::setBodyHeight(const float height)
+void Platform::setBodyHeight(float height)
 {
-    for (size_t i = 0; i < 6; ++i)
+    for (Leg& leg : m_legs)
     {
-        m_legs[i].m_bodyHeight = height;
-        m_legs[i].RecalcAngles();
+        leg.m_bodyHeight = height;
+        leg.RecalcAngles();
     }
     m_bodyHeight = height;
 }
@@ -117,16 +111,20 @@ bool Platform::isLegInSwingGroup(int legIndex) const
 
 void Platform::procedureGo()
 {
+    constexpr double motionThreshold = 0.5;
+    constexpr double speedThreshold = 0.1;
+
     // 1. Smooth velocities toward targets
-    const double smoothFactor = m_gaitParams.movementSmoothing;
+    const bodyConfiguration::GaitParameters& gp = m_gaitParams;
+    const double smoothFactor = gp.movementSmoothing;
     m_currentMovementSpeed.x += (m_targetMovementSpeed.x - m_currentMovementSpeed.x) * smoothFactor;
     m_currentMovementSpeed.y += (m_targetMovementSpeed.y - m_currentMovementSpeed.y) * smoothFactor;
-    m_currentRotationSpeed_deg += (m_targetRotationSpeed_deg - m_currentRotationSpeed_deg) * m_gaitParams.rotationSmoothing;
+    m_currentRotationSpeed_deg += (m_targetRotationSpeed_deg - m_currentRotationSpeed_deg) * gp.rotationSmoothing;
 
     // 2. Only advance gait if motion is meaningful or legs have drifted from center
-    double motionMag = fabs(m_currentMovementSpeed.x) + fabs(m_currentMovementSpeed.y)
-                     + fabs(m_currentRotationSpeed_deg) * 2.0;
-    bool needsStep = motionMag > 0.5;
+    double motionMag = std::abs(m_currentMovementSpeed.x) + std::abs(m_currentMovementSpeed.y)
+                     + std::abs(m_currentRotationSpeed_deg) * 2.0;
+    bool needsStep = motionMag > motionThreshold;
     if (!needsStep)
     {
         for (Leg &leg : m_legs)
@@ -141,12 +139,14 @@ void Platform::procedureGo()
 
     if (needsStep)
     {
-        m_gaitPhase_ += m_gaitParams.gaitFrequency;
+        m_gaitPhase_ += gp.gaitFrequency;
         if (m_gaitPhase_ >= 1.0)
             m_gaitPhase_ -= 1.0;
     }
 
-    // 3. Process each leg
+    // 3. Process each leg + recalc angles in a single pass
+    const vec2f& curSpeed = m_currentMovementSpeed;
+    const double curRotSpeed = m_currentRotationSpeed_deg;
     for (Leg &leg : m_legs)
     {
         const int idx = leg.GetLegIndex();
@@ -158,15 +158,15 @@ void Platform::procedureGo()
             {
                 if (!needsStep)
                 {
-                    // Don't start a new swing when stopping
+                    leg.RecalcAngles();
                     continue;
                 }
                 vec2f target = leg.GetCenterVec();
-                double speed = m_currentMovementSpeed.size();
-                if (speed > 0.1)
+                double speed = curSpeed.size();
+                if (speed > speedThreshold)
                 {
-                    double stepLen = std::min(speed * 5.0, m_gaitParams.maxStepLength);
-                    vec2f stepDir(m_currentMovementSpeed.x / speed, m_currentMovementSpeed.y / speed);
+                    double stepLen = std::min(speed * 5.0, gp.maxStepLength);
+                    vec2f stepDir(curSpeed.x / speed, curSpeed.y / speed);
                     target.x += stepDir.x * stepLen;
                     target.y += stepDir.y * stepLen;
                 }
@@ -175,7 +175,6 @@ void Platform::procedureGo()
 
             if (!needsStep)
             {
-                // Force-complete the swing smoothly when stopping
                 double p = leg.GetSwingPhase() + 0.15;
                 if (p >= 1.0)
                     leg.EndSwing();
@@ -197,33 +196,29 @@ void Platform::procedureGo()
         {
             if (leg.IsSwinging())
                 leg.EndSwing();
-            leg.LegAddOffsetInGlobal(m_currentMovementSpeed.x, m_currentMovementSpeed.y);
-            leg.TurnLegWithGlobalCoord(m_currentRotationSpeed_deg);
+            leg.LegAddOffsetInGlobal(curSpeed.x, curSpeed.y);
+            leg.TurnLegWithGlobalCoord(curRotSpeed);
         }
-    }
-
-    // 4. Recalculate servo angles for all legs
-    for (Leg &leg : m_legs)
-    {
         leg.RecalcAngles();
     }
 }
 
 void Platform::prepareToGo()
 {
-    for (size_t i = 0; i < 6; ++i)
+    for (int i = 0; i < 6; ++i)
     {
-        if (!m_legs[i].IsInCenter())
+        Leg& leg = m_legs[i];
+        if (!leg.IsInCenter())
         {
-            m_legs[i].MoveLegUp();
+            leg.MoveLegUp();
             movementDelay();
-            m_legs[i].MoveLegToCenter();
+            leg.MoveLegToCenter();
             movementDelay();
-            m_legs[i].RecalcAngles();
+            leg.RecalcAngles();
             movementDelay();
         }
-        m_legs[i].MoveLegDown();
-        m_legs[i].RecalcAngles();
+        leg.MoveLegDown();
+        leg.RecalcAngles();
         movementDelay();
         movementDelay();
 
@@ -232,18 +227,18 @@ void Platform::prepareToGo()
     }
 }
 
-void Platform::setLegCenter(int idx, float x, float y, float height =0)
+void Platform::setLegCenter(int idx, float x, float y, float height)
 {
-    m_legs[idx].SetLocalXY(x,y);
-    if(height>0) m_legs[idx].MoveLegUp();
+    m_legs[idx].SetLocalXY(x, y);
+    if (height > 0)
+        m_legs[idx].MoveLegUp();
     m_legs[idx].RecalcAngles();
-
 }
 
 std::pair<float, float> Platform::getLegCenter(int idx)
 {
-    LegCoodinates coord =  m_legs[idx].GetLegCoord();
-    return {coord.x, coord.y};
+    LegCoodinates coord = m_legs[idx].GetLegCoord();
+    return {static_cast<float>(coord.x), static_cast<float>(coord.y)};
 }
 
 void Platform::movementThread()
