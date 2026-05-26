@@ -133,13 +133,13 @@ void Platform::stopMovementThread()
 bool Platform::isLegInSwingGroup(int legIndex) const
 {
     const bool isTripodA = (legIndex % 2 == 0);
-    return isTripodA ? (m_gaitPhase_ < 0.5) : (m_gaitPhase_ >= 0.5);
+    return isTripodA ? (m_gaitPhase_ < m_gaitParams.swingRatio) : (m_gaitPhase_ >= m_gaitParams.swingRatio);
 }
 
 void Platform::procedureGo()
 {
-    constexpr double motionThreshold = 0.5;
-    constexpr double speedThreshold = 0.1;
+    constexpr double motionThreshold = 0.01;
+    constexpr double speedThreshold = 0.05;
 
     vec2f targetMovementSpeed;
     double targetRotationSpeed_deg;
@@ -158,10 +158,20 @@ void Platform::procedureGo()
     m_currentMovementSpeed.y += (targetMovementSpeed.y - m_currentMovementSpeed.y) * smoothFactor;
     m_currentRotationSpeed_deg += (targetRotationSpeed_deg - m_currentRotationSpeed_deg) * gp.rotationSmoothing;
 
+    const double swingRatio = gp.swingRatio;
+
+    // Calculate expected frames per step for proper distance matching
+    // gaitFrequency is phase increment per frame; 1.0 = full cycle
+    double framesPerFullCycle = 1.0 / gp.gaitFrequency;
+    double framesPerStance = framesPerFullCycle * (1.0 - swingRatio);
+
     // 2. Only advance gait if motion is meaningful or legs have drifted from center
     double motionMag = std::abs(m_currentMovementSpeed.x) + std::abs(m_currentMovementSpeed.y)
                      + std::abs(m_currentRotationSpeed_deg) * 2.0;
-    bool needsStep = motionMag > motionThreshold;
+    // Also check target speed separately - if user is requesting motion, start gait
+    double targetMotionMag = std::abs(targetMovementSpeed.x) + std::abs(targetMovementSpeed.y)
+                            + std::abs(targetRotationSpeed_deg) * 2.0;
+    bool needsStep = (motionMag > motionThreshold) || (targetMotionMag > motionThreshold);
     if (!needsStep)
     {
         for (Leg &leg : m_legs)
@@ -202,7 +212,10 @@ void Platform::procedureGo()
                 double speed = curSpeed.size();
                 if (speed > speedThreshold)
                 {
-                    double stepLen = std::min(speed * 5.0, gp.maxStepLength);
+                    // Step length should match how far the stance leg moves:
+                    // speed * framesPerStance, but we also need to account for
+                    // the leg landing slightly ahead of center for smooth motion
+                    double stepLen = std::min(speed * framesPerStance, gp.maxStepLength);
                     vec2f stepDir(curSpeed.x / speed, curSpeed.y / speed);
                     target.x += stepDir.x * stepLen;
                     target.y += stepDir.y * stepLen;
@@ -212,7 +225,7 @@ void Platform::procedureGo()
 
             if (!needsStep)
             {
-                double p = leg.GetSwingPhase() + 0.15;
+                double p = leg.GetSwingPhase() + gp.gaitFrequency / swingRatio;
                 if (p >= 1.0)
                     leg.EndSwing();
                 else
@@ -223,9 +236,9 @@ void Platform::procedureGo()
                 double localPhase;
                 const bool isTripodA = (idx % 2 == 0);
                 if (isTripodA)
-                    localPhase = m_gaitPhase_ / 0.5;
+                    localPhase = m_gaitPhase_ / swingRatio;
                 else
-                    localPhase = (m_gaitPhase_ - 0.5) / 0.5;
+                    localPhase = (m_gaitPhase_ - swingRatio) / (1.0 - swingRatio);
                 leg.UpdateSwing(localPhase);
             }
         }
