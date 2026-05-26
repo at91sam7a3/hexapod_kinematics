@@ -6,6 +6,7 @@
 #include <thread>
 #include <vector>
 #include <functional>
+#include <mutex>
 
 // This class manage all movements of robot
 namespace hexapod
@@ -24,8 +25,11 @@ namespace hexapod
                  std::function<void(int, double)> servoPositionFunction,
                  std::function<void()> readSensorsFunction,
                  int kinematic_period=100);
+
+        ~Platform();
+
         /*Move legs into transportable position*/
-        void parkLegs();        
+        void parkLegs();
         void setVelocity(const vec2f& movementSpeed, double rotationSpeed_deg);
         void setWalkingStyle(StepStyle style);
         void setBodyHeight(const float height);
@@ -36,6 +40,8 @@ namespace hexapod
         void setLegCenter(int idx, float x, float y, float height);
         std::pair<float,float> getLegCenter(int idx);
         void setGaitParameters(const bodyConfiguration::GaitParameters& params);
+        void setTrajectoryType(TrajectoryType type);
+        TrajectoryType getTrajectoryType() const { return m_trajectoryType; }
         void procedureGo();
     private:
         void movementThread();
@@ -55,6 +61,9 @@ namespace hexapod
         std::function<void()> m_readSensorsFunction;
         std::atomic_bool m_active;
         StepStyle m_stepStyle;
+        TrajectoryType m_trajectoryType = TrajectoryType::LinearSine;
         int m_kinematicPeriod;
+        std::thread m_movementThread;
+        mutable std::mutex m_mutex;
     };
 } //namespace hexaod

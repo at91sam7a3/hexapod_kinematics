@@ -8,6 +8,21 @@
 namespace hexapod
 {
 
+    enum class TrajectoryType
+    {
+        LinearSine = 0,
+        Cycloid = 1
+    };
+
+    enum class IKResult
+    {
+        Success = 0,
+        Clamped,
+        OutOfReach,
+        TooClose,
+        Singularity
+    };
+
     enum Legs
     {
         RightFront = 0,
@@ -38,7 +53,7 @@ namespace hexapod
     public:
         Leg(std::function<void(int, double)> servoFunction, int legIndex);
 
-        void RecalcAngles();
+        IKResult RecalcAngles();
 
         void SetLocalXY(double, double);
 
@@ -81,6 +96,14 @@ namespace hexapod
         double m_bodyHeight;
 
         LegCoodinates GetLegCoord() const;
+
+        bool isReachable(double x, double y, double height) const;
+        double getMaxReach() const;
+        double getMinReach() const;
+        IKResult getLastIKResult() const { return lastIKResult_; }
+
+        void setTrajectoryType(TrajectoryType type) { m_trajectoryType = type; }
+        TrajectoryType getTrajectoryType() const { return m_trajectoryType; }
 
     private:
         enum LegPosition
@@ -125,5 +148,7 @@ namespace hexapod
         double swingTargetY_;
         bodyConfiguration::HexapodMovementConfiguration movementConfiguration_;
         bodyConfiguration::HexapodFrame frame_;
+        IKResult lastIKResult_ = IKResult::Success;
+        TrajectoryType m_trajectoryType = TrajectoryType::LinearSine;
     };
 }

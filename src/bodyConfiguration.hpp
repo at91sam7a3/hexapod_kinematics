@@ -1,6 +1,10 @@
 #pragma once
+#include <array>
+
 namespace bodyConfiguration
 {
+    constexpr double PI = 3.141592653589793;
+
   struct HexapodFrame
   {
         double cLegPart;  // BODY * - C - * - B - * - A - END
@@ -11,6 +15,9 @@ namespace bodyConfiguration
         double rearYOffset;
         double rearXOffset;
 
+        std::array<double, 6> legCenterX;
+        std::array<double, 6> legCenterY;
+
         static HexapodFrame getConfiguredFrame ()
         {
             HexapodFrame frame;
@@ -20,6 +27,13 @@ namespace bodyConfiguration
             frame.centerYOffset = 108;
             frame.rearYOffset = 76;
             frame.rearXOffset = 76;
+
+            frame.legCenterX = {
+                 76.0, 0.0, -76.0, -76.0, 0.0, 76.0
+            };
+            frame.legCenterY = {
+                 76.0, 108.0, 76.0, 76.0, 108.0, 76.0
+            };
             return frame;
         }
   };

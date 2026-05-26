@@ -1,12 +1,9 @@
 #include "vec2f.hpp"
+#include "bodyConfiguration.hpp"
 #include <cmath>
 
 namespace hexapod
 {
-namespace
-{
-    constexpr static const double PI = 3.141592654;
-}
 double vec2f::getDistance(vec2f first, vec2f second)
 {
     double dx = first.x - second.x;
@@ -16,7 +13,7 @@ double vec2f::getDistance(vec2f first, vec2f second)
 
 void vec2f::rotate(double angle_deg)
 {
-    double tmpAngle_rad = angle_deg * PI / 180.0;
+    double tmpAngle_rad = angle_deg * bodyConfiguration::PI / 180.0;
     double tmpx = (cos(tmpAngle_rad) * x) - (sin(tmpAngle_rad) * y);
     double tmpy = (sin(tmpAngle_rad) * x) + (cos(tmpAngle_rad) * y);
     x = tmpx;
@@ -56,12 +53,12 @@ vec2f &vec2f::operator -= (const vec2f &rhs)
 
 double vec2f::radToDeg(double rad) const
 {
-    return rad * (180.0 / PI);
+    return rad * (180.0 / bodyConfiguration::PI);
 }
 
 double vec2f::vectorAngle() const
 {
-    return std::atan2(y, x) * 180.0 / PI;
+    return std::atan2(y, x) * 180.0 / bodyConfiguration::PI;
 }
 
 }

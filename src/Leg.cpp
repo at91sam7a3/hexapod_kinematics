@@ -7,7 +7,8 @@
 
 namespace
 {
-    constexpr double PI = 3.141592654;
+    constexpr double degToRad = bodyConfiguration::PI / 180.0;
+    constexpr double radToDeg = 180.0 / bodyConfiguration::PI;
 }
 
 namespace hexapod
@@ -37,52 +38,68 @@ Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
     indexes_.push_back(idx * 3 + 2);
     // it means leg look left of right when in math it`s degree is 0 but in real it`s servo 90
     angleCOffsetAccordingToLegAttachment_deg = -90;
-    //X - front, Y - left(or right)
-    // middle legs
-    if ((idx == RightMiddle) || (idx == LeftMiddle))
-    {
-        xCenterPos_ = 0;
-        yCenterPos_ = 100;
-    }
 
-    if ((idx == RightFront) || (idx == LeftFront))
-    {
-        xCenterPos_ = 70;
-        yCenterPos_ = 70;
-    }
-
-    if ((idx == RightBack) || (idx == LeftBack))
-    {
-        xCenterPos_ = -70;//-72-50;
-        yCenterPos_ = 70;
-    }
+    xCenterPos_ = frame_.legCenterX[idx];
+    yCenterPos_ = frame_.legCenterY[idx];
 
     xPos_ = xCenterPos_;
     yPos_ = yCenterPos_;
 }
 
-void Leg::RecalcAngles()
+IKResult Leg::RecalcAngles()
 {
     double angleC_rad = std::atan2(xPos_, yPos_);
     double L1 = std::sqrt(xPos_ * xPos_ + yPos_ * yPos_);
     double dh = m_bodyHeight - distanceFromGround_;
     double dL = L1 - frame_.cLegPart;
     double L = std::sqrt(dh * dh + dL * dL);
-    if (L > (frame_.aLegPart + frame_.bLegPart))
-        return;
+
+    const double maxReach = frame_.aLegPart + frame_.bLegPart;
+    const double minReach = std::abs(frame_.aLegPart - frame_.bLegPart);
+
+    if (L > maxReach + 1e-6)
+    {
+        lastIKResult_ = IKResult::OutOfReach;
+        return IKResult::OutOfReach;
+    }
+
+    if (L < minReach - 1e-6)
+    {
+        lastIKResult_ = IKResult::TooClose;
+        return IKResult::TooClose;
+    }
+
+    if (L < 1e-6 || std::abs(L - maxReach) < 1e-6 || std::abs(L - minReach) < 1e-6)
+    {
+        lastIKResult_ = IKResult::Singularity;
+    }
 
     double aSq = frame_.aLegPart * frame_.aLegPart;
     double bSq = frame_.bLegPart * frame_.bLegPart;
     double angleA_rad = std::acos(dh / L) + std::acos((aSq - bSq - L * L) / (-2.0 * frame_.bLegPart * L));
     double angleB_rad = std::acos((L * L - aSq - bSq) / (-2.0 * frame_.aLegPart * frame_.bLegPart));
 
-    constexpr double radToDeg = 180.0 / PI;
     angleA_deg = angleA_rad * radToDeg;
     angleB_deg = angleB_rad * radToDeg;
     angleC_deg = angleC_rad * radToDeg;
+
+    bool clamped = false;
+    if (angleA_deg < 0 || angleA_deg > 180) clamped = true;
+    if (angleB_deg < 0 || angleB_deg > 180) clamped = true;
+    if (angleC_deg < 0 || angleC_deg > 180) clamped = true;
+
     SetMotorAngle(0, angleA_deg);
     SetMotorAngle(1, angleB_deg);
     SetMotorAngle(2, angleC_deg);
+
+    if (clamped)
+    {
+        lastIKResult_ = IKResult::Clamped;
+        return IKResult::Clamped;
+    }
+
+    lastIKResult_ = IKResult::Success;
+    return IKResult::Success;
 }
 
 void Leg::SetLocalXY(double x, double y) // TODO
@@ -218,7 +235,7 @@ void Leg::StartSwing(double targetX, double targetY)
     swingTargetX_ = targetX;
     swingTargetY_ = targetY;
     swingPhase_ = 0.001;
-    distanceFromGround_ = movementConfiguration_.stepHeight * sin(swingPhase_ * PI);
+    distanceFromGround_ = movementConfiguration_.stepHeight * sin(swingPhase_ * bodyConfiguration::PI);
     leg_position = moving_up;
 }
 
@@ -230,10 +247,28 @@ void Leg::UpdateSwing(double phase)
         return;
     }
     swingPhase_ = phase;
-    double zFactor = sin(swingPhase_ * PI);
+
+    double xyFactor;
+    double zFactor;
+
+    switch (m_trajectoryType)
+    {
+        case TrajectoryType::Cycloid: {
+            const double theta = phase * 2.0 * bodyConfiguration::PI;
+            xyFactor = (theta - std::sin(theta)) / (2.0 * bodyConfiguration::PI);
+            zFactor = 0.5 * (1.0 - std::cos(phase * bodyConfiguration::PI));
+            break;
+        }
+        case TrajectoryType::LinearSine:
+        default:
+            xyFactor = phase;
+            zFactor = std::sin(phase * bodyConfiguration::PI);
+            break;
+    }
+
     distanceFromGround_ = movementConfiguration_.stepHeight * zFactor;
-    xPos_ = swingStartX_ + (swingTargetX_ - swingStartX_) * swingPhase_;
-    yPos_ = swingStartY_ + (swingTargetY_ - swingStartY_) * swingPhase_;
+    xPos_ = swingStartX_ + (swingTargetX_ - swingStartX_) * xyFactor;
+    yPos_ = swingStartY_ + (swingTargetY_ - swingStartY_) * xyFactor;
 }
 
 void Leg::EndSwing()
@@ -352,9 +387,32 @@ vec2f Leg::GlobalToLocal(const vec2f& lc) const
         res.x = lc.x + frame_.rearXOffset;
         res.y = -lc.y - frame_.rearYOffset;
         break;
-    default:
-        break;
-    }
-    return res;
-}
+     default:
+         break;
+     }
+     return res;
+ }
+
+ double Leg::getMaxReach() const
+ {
+     return frame_.aLegPart + frame_.bLegPart;
+ }
+
+ double Leg::getMinReach() const
+ {
+     return std::abs(frame_.aLegPart - frame_.bLegPart);
+ }
+
+ bool Leg::isReachable(double x, double y, double height) const
+ {
+     double L1 = std::sqrt(x * x + y * y);
+     double dh = m_bodyHeight - height;
+     double dL = L1 - frame_.cLegPart;
+     double L = std::sqrt(dh * dh + dL * dL);
+
+     const double maxReach = frame_.aLegPart + frame_.bLegPart;
+     const double minReach = std::abs(frame_.aLegPart - frame_.bLegPart);
+
+     return (L <= maxReach + 1e-6) && (L >= minReach - 1e-6);
+ }
 }

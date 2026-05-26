@@ -35,18 +35,31 @@ void Platform::parkLegs()
 
 void Platform::setVelocity(const vec2f& movementSpeed, double rotationSpeed_deg)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_targetMovementSpeed = movementSpeed;
     m_targetRotationSpeed_deg = rotationSpeed_deg;
 }
 
 void Platform::setWalkingStyle(StepStyle style)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_stepStyle = style;
 }
 
 void Platform::setGaitParameters(const bodyConfiguration::GaitParameters& params)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_gaitParams = params;
+}
+
+void Platform::setTrajectoryType(TrajectoryType type)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_trajectoryType = type;
+    for (Leg& leg : m_legs)
+    {
+        leg.setTrajectoryType(type);
+    }
 }
 
 Platform::Platform(std::function<void(int)> sleepMsFunction,
@@ -75,6 +88,7 @@ Platform::Platform(std::function<void(int)> sleepMsFunction,
 
 void Platform::setBodyHeight(float height)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     for (Leg& leg : m_legs)
     {
         leg.m_bodyHeight = height;
@@ -85,20 +99,33 @@ void Platform::setBodyHeight(float height)
 
 float Platform::getBodyHeight() const
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     return m_bodyHeight;
+}
+
+Platform::~Platform()
+{
+    stopMovementThread();
 }
 
 void Platform::startMovementThread()
 {
     if(m_active) return;
     m_active = true;
-    std::thread movement(&Platform::movementThread,this);
-    movement.detach();
+    if (m_movementThread.joinable())
+    {
+        m_movementThread.join();
+    }
+    m_movementThread = std::thread(&Platform::movementThread, this);
 }
 
 void Platform::stopMovementThread()
 {
     m_active = false;
+    if (m_movementThread.joinable())
+    {
+        m_movementThread.join();
+    }
 }
 
 // Tripod A: indices 0,2,4 (RF, RB, LM) — swings in first half of cycle
@@ -114,12 +141,22 @@ void Platform::procedureGo()
     constexpr double motionThreshold = 0.5;
     constexpr double speedThreshold = 0.1;
 
+    vec2f targetMovementSpeed;
+    double targetRotationSpeed_deg;
+    bodyConfiguration::GaitParameters gp;
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        targetMovementSpeed = m_targetMovementSpeed;
+        targetRotationSpeed_deg = m_targetRotationSpeed_deg;
+        gp = m_gaitParams;
+    }
+
     // 1. Smooth velocities toward targets
-    const bodyConfiguration::GaitParameters& gp = m_gaitParams;
     const double smoothFactor = gp.movementSmoothing;
-    m_currentMovementSpeed.x += (m_targetMovementSpeed.x - m_currentMovementSpeed.x) * smoothFactor;
-    m_currentMovementSpeed.y += (m_targetMovementSpeed.y - m_currentMovementSpeed.y) * smoothFactor;
-    m_currentRotationSpeed_deg += (m_targetRotationSpeed_deg - m_currentRotationSpeed_deg) * gp.rotationSmoothing;
+    m_currentMovementSpeed.x += (targetMovementSpeed.x - m_currentMovementSpeed.x) * smoothFactor;
+    m_currentMovementSpeed.y += (targetMovementSpeed.y - m_currentMovementSpeed.y) * smoothFactor;
+    m_currentRotationSpeed_deg += (targetRotationSpeed_deg - m_currentRotationSpeed_deg) * gp.rotationSmoothing;
 
     // 2. Only advance gait if motion is meaningful or legs have drifted from center
     double motionMag = std::abs(m_currentMovementSpeed.x) + std::abs(m_currentMovementSpeed.y)
