@@ -69,6 +69,10 @@ Platform::Platform(std::function<void(int)> sleepMsFunction,
     : m_targetRotationSpeed_deg(0.0)
     , m_targetMovementSpeed(0.0, 0.0)
     , m_currentRotationSpeed_deg(0.0)
+    , m_targetBodyPitch_deg(0.0)
+    , m_targetBodyRoll_deg(0.0)
+    , m_currentBodyPitch_deg(0.0)
+    , m_currentBodyRoll_deg(0.0)
     , m_currentMovementSpeed(0.0, 0.0)
     , m_gaitPhase_(0.0)
     , m_gaitParams(bodyConfiguration::GaitParameters::getDefault())
@@ -101,6 +105,30 @@ float Platform::getBodyHeight() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_bodyHeight;
+}
+
+void Platform::setBodyPitch(double deg)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_targetBodyPitch_deg = deg;
+}
+
+void Platform::setBodyRoll(double deg)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_targetBodyRoll_deg = deg;
+}
+
+double Platform::getBodyPitch() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_currentBodyPitch_deg;
+}
+
+double Platform::getBodyRoll() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_currentBodyRoll_deg;
 }
 
 Platform::~Platform()
@@ -143,20 +171,26 @@ void Platform::procedureGo()
 
     vec2f targetMovementSpeed;
     double targetRotationSpeed_deg;
+    double targetBodyPitch_deg;
+    double targetBodyRoll_deg;
     bodyConfiguration::GaitParameters gp;
 
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         targetMovementSpeed = m_targetMovementSpeed;
         targetRotationSpeed_deg = m_targetRotationSpeed_deg;
+        targetBodyPitch_deg = m_targetBodyPitch_deg;
+        targetBodyRoll_deg = m_targetBodyRoll_deg;
         gp = m_gaitParams;
     }
 
-    // 1. Smooth velocities toward targets
+    // 1. Smooth velocities and body orientation toward targets
     const double smoothFactor = gp.movementSmoothing;
     m_currentMovementSpeed.x += (targetMovementSpeed.x - m_currentMovementSpeed.x) * smoothFactor;
     m_currentMovementSpeed.y += (targetMovementSpeed.y - m_currentMovementSpeed.y) * smoothFactor;
     m_currentRotationSpeed_deg += (targetRotationSpeed_deg - m_currentRotationSpeed_deg) * gp.rotationSmoothing;
+    m_currentBodyPitch_deg += (targetBodyPitch_deg - m_currentBodyPitch_deg) * gp.rotationSmoothing;
+    m_currentBodyRoll_deg += (targetBodyRoll_deg - m_currentBodyRoll_deg) * gp.rotationSmoothing;
 
     const double swingRatio = gp.swingRatio;
 
@@ -197,6 +231,7 @@ void Platform::procedureGo()
     for (Leg &leg : m_legs)
     {
         const int idx = leg.GetLegIndex();
+        leg.setBodyOrientation(m_currentBodyPitch_deg, m_currentBodyRoll_deg);
         const bool inSwing = isLegInSwingGroup(idx);
 
         if (inSwing)

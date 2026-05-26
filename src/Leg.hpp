@@ -105,6 +105,12 @@ namespace hexapod
         void setTrajectoryType(TrajectoryType type) { m_trajectoryType = type; }
         TrajectoryType getTrajectoryType() const { return m_trajectoryType; }
 
+        void setBodyOrientation(double pitch_deg, double roll_deg)
+        {
+            m_bodyPitch_deg = pitch_deg;
+            m_bodyRoll_deg = roll_deg;
+        }
+
     private:
         enum LegPosition
         {
@@ -150,5 +156,7 @@ namespace hexapod
         bodyConfiguration::HexapodFrame frame_;
         IKResult lastIKResult_ = IKResult::Success;
         TrajectoryType m_trajectoryType = TrajectoryType::LinearSine;
+        double m_bodyPitch_deg = 0.0;
+        double m_bodyRoll_deg = 0.0;
     };
 }

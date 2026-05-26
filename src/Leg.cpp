@@ -48,11 +48,39 @@ Leg::Leg(std::function<void(int, double)> servoFunction, int idx)
 
 IKResult Leg::RecalcAngles()
 {
-    double angleC_rad = std::atan2(xPos_, yPos_);
-    double L1 = std::sqrt(xPos_ * xPos_ + yPos_ * yPos_);
-    double dh = m_bodyHeight - distanceFromGround_;
+    double xEff = xPos_;
+    double yEff = yPos_;
+    double dhEff = m_bodyHeight - distanceFromGround_;
+
+    double pitchRad = m_bodyPitch_deg * degToRad;
+    double rollRad = m_bodyRoll_deg * degToRad;
+    if (std::abs(pitchRad) > 1e-9 || std::abs(rollRad) > 1e-9)
+    {
+        double cosP = std::cos(pitchRad);
+        double sinP = std::sin(pitchRad);
+        double cosR = std::cos(rollRad);
+        double sinR = std::sin(rollRad);
+
+        double x = xPos_;
+        double y = yPos_;
+        double z = distanceFromGround_ - m_bodyHeight;
+        double ySigned = (m_legIndex < 3) ? y : -y;
+
+        // Rotate foot-to-shoulder vector from body frame to world frame
+        // R = Ry(-pitch) * Rx(-roll) transforms body->world
+        double xWorld = cosP * x + sinP * sinR * ySigned - sinP * cosR * z;
+        double yWorld = cosR * ySigned + sinR * z;
+        double zWorld = sinP * x - cosP * sinR * ySigned + cosP * cosR * z;
+
+         xEff = xWorld;
+         yEff = (m_legIndex < 3) ? yWorld : -yWorld;
+         dhEff = -zWorld;
+    }
+
+    double angleC_rad = std::atan2(xEff, yEff);
+    double L1 = std::sqrt(xEff * xEff + yEff * yEff);
     double dL = L1 - frame_.cLegPart;
-    double L = std::sqrt(dh * dh + dL * dL);
+    double L = std::sqrt(dhEff * dhEff + dL * dL);
 
     const double maxReach = frame_.aLegPart + frame_.bLegPart;
     const double minReach = std::abs(frame_.aLegPart - frame_.bLegPart);
@@ -76,7 +104,7 @@ IKResult Leg::RecalcAngles()
 
     double aSq = frame_.aLegPart * frame_.aLegPart;
     double bSq = frame_.bLegPart * frame_.bLegPart;
-    double angleA_rad = std::acos(dh / L) + std::acos((aSq - bSq - L * L) / (-2.0 * frame_.bLegPart * L));
+    double angleA_rad = std::acos(dhEff / L) + std::acos((aSq - bSq - L * L) / (-2.0 * frame_.bLegPart * L));
     double angleB_rad = std::acos((L * L - aSq - bSq) / (-2.0 * frame_.aLegPart * frame_.bLegPart));
 
     angleA_deg = angleA_rad * radToDeg;

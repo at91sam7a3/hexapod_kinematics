@@ -42,6 +42,10 @@ namespace hexapod
         void setGaitParameters(const bodyConfiguration::GaitParameters& params);
         void setTrajectoryType(TrajectoryType type);
         TrajectoryType getTrajectoryType() const { return m_trajectoryType; }
+        void setBodyPitch(double deg);
+        void setBodyRoll(double deg);
+        double getBodyPitch() const;
+        double getBodyRoll() const;
         void procedureGo();
     private:
         void movementThread();
@@ -54,6 +58,10 @@ namespace hexapod
         vec2f m_currentMovementSpeed;
         double m_targetRotationSpeed_deg;
         double m_currentRotationSpeed_deg;
+        double m_targetBodyPitch_deg;
+        double m_targetBodyRoll_deg;
+        double m_currentBodyPitch_deg;
+        double m_currentBodyRoll_deg;
         double m_gaitPhase_;
         bodyConfiguration::GaitParameters m_gaitParams;
         std::function<void(int)> m_sleepMsFunction;
