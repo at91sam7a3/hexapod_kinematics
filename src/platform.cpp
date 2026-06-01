@@ -326,6 +326,18 @@ std::pair<float, float> Platform::getLegCenter(int idx)
     return {static_cast<float>(coord.x), static_cast<float>(coord.y)};
 }
 
+std::vector<Platform::LegState> Platform::getLegStates() const
+{
+    std::vector<LegState> result;
+    result.reserve(6);
+    for (const Leg& leg : m_legs)
+    {
+        vec2f pos = leg.GetLegGlobalCoord();
+        result.push_back({pos.x, pos.y, !leg.IsSwinging()});
+    }
+    return result;
+}
+
 void Platform::movementThread()
 {
     prepareToGo();

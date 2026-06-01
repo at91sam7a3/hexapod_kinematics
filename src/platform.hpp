@@ -14,19 +14,12 @@ namespace hexapod
     class Platform
     {
     public:
-        enum StepStyle
-        {
-            OneLeg,
-            TwoLegs,
-            ThreeLegs
+        struct LegState {
+            double x_mm;      ///< body-frame X (mm, forward)
+            double y_mm;      ///< body-frame Y (mm, right)
+            bool on_ground;   ///< true if foot is on ground
         };
-
-        Platform(std::function<void(int)> sleepMsFunction,
-                 std::function<void(int, double)> servoPositionFunction,
-                 std::function<void()> readSensorsFunction,
-                 int kinematic_period=100);
-
-        ~Platform();
+        std::vector<LegState> getLegStates() const;
 
         /*Move legs into transportable position*/
         void parkLegs();

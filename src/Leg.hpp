@@ -128,6 +128,7 @@ namespace hexapod
 
         double GetLegLocalZAngle() const;
 
+    public:
         vec2f GetLegGlobalCoord() const;
 
     private:
