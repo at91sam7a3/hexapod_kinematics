@@ -14,6 +14,13 @@ namespace hexapod
     class Platform
     {
     public:
+        enum StepStyle
+        {
+            OneLeg,
+            TwoLegs,
+            ThreeLegs
+        };
+
         struct LegState {
             double x_mm;      ///< body-frame X (mm, forward)
             double y_mm;      ///< body-frame Y (mm, right)
