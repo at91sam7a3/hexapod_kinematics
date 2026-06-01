@@ -28,6 +28,13 @@ namespace hexapod
         };
         std::vector<LegState> getLegStates() const;
 
+        Platform(std::function<void(int)> sleepMsFunction,
+                 std::function<void(int, double)> servoPositionFunction,
+                 std::function<void()> readSensorsFunction,
+                 int kinematic_period=100);
+
+        ~Platform();
+
         /*Move legs into transportable position*/
         void parkLegs();
         void setVelocity(const vec2f& movementSpeed, double rotationSpeed_deg);
