@@ -53,7 +53,7 @@ namespace bodyConfiguration
   struct GaitParameters
   {
     double movementSmoothing = 0.2;
-    double rotationSmoothing = 0.2;
+    double rotationSmoothing = 0.5;
     double stepHeight = 20;
     double maxStepLength = 25;
     double gaitFrequency = 0.08;
